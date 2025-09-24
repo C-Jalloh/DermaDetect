@@ -105,6 +105,12 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.3'
+        }
+    }
 }
 
 dependencies {
