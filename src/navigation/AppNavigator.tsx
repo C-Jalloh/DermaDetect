@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider } from 'react-native-paper';
@@ -18,6 +18,12 @@ import CameraScreen from '../screens/CameraScreen';
 import ResultScreen from '../screens/ResultScreen';
 import PatientConsentScreen from '../screens/PatientConsentScreen';
 import CHWSettingsScreen from '../screens/chw/CHWSettingsScreen';
+import DoctorSettingsScreen from '../screens/doctor/DoctorSettingsScreen';
+import PatientProfileCHWScreen from '../screens/chw/PatientProfileCHWScreen';
+import PatientRegistrationScreen from '../screens/chw/PatientRegistrationScreen';
+import PatientProfileDoctorScreen from '../screens/doctor/PatientProfileDoctorScreen';
+import AddVitalsScreen from '../screens/chw/AddVitalsScreen';
+import DiagnosisScreen from '../screens/doctor/DiagnosisScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -27,6 +33,12 @@ export type RootStackParamList = {
   Result: { imageUri: string; additionalImages?: string[]; patientId: string };
   PatientConsent: undefined;
   CHWSettings: undefined;
+  DoctorSettings: undefined;
+  PatientProfileCHW: { patientId: string };
+  PatientRegistration: undefined;
+  PatientProfileDoctor: { patientId: string };
+  AddVitals: { patientId: string };
+  Diagnosis: { triageId: string };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -68,6 +80,12 @@ const AppNavigatorContent: React.FC = () => {
       <Stack.Screen name="Result" component={ResultScreen} />
       <Stack.Screen name="PatientConsent" component={PatientConsentScreen} />
       <Stack.Screen name="CHWSettings" component={CHWSettingsScreen} />
+      <Stack.Screen name="DoctorSettings" component={DoctorSettingsScreen} />
+      <Stack.Screen name="PatientProfileCHW" component={PatientProfileCHWScreen} />
+      <Stack.Screen name="PatientRegistration" component={PatientRegistrationScreen} />
+      <Stack.Screen name="PatientProfileDoctor" component={PatientProfileDoctorScreen} />
+      <Stack.Screen name="AddVitals" component={AddVitalsScreen} />
+      <Stack.Screen name="Diagnosis" component={DiagnosisScreen} />
     </Stack.Navigator>
   );
 };
@@ -77,7 +95,7 @@ const AppNavigator: React.FC = () => {
     <Provider store={store}>
       <PersistGate
         loading={
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={styles.loadingContainer}>
             <Text>Loading...</Text>
           </View>
         }
@@ -94,5 +112,13 @@ const AppNavigator: React.FC = () => {
     </Provider>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
 export default AppNavigator;

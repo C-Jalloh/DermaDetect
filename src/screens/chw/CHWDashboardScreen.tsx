@@ -4,10 +4,10 @@ import { Text, Card, Button, Searchbar } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { CHWStackParamList } from '../../navigation/CHWNavigator';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 import { theme } from '../../utils/theme';
 
-type CHWDashboardNavigationProp = StackNavigationProp<CHWStackParamList, 'CHWDashboard'>;
+type CHWDashboardNavigationProp = StackNavigationProp<RootStackParamList>;
 
 // Mock patients data
 const mockPatients = [

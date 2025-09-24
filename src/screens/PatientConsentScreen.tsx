@@ -15,7 +15,7 @@ const PatientConsentScreen: React.FC = () => {
 
   const handleContinue = () => {
     if (consentGiven) {
-      navigation.navigate('Camera');
+      navigation.navigate('CHWMain');
     }
   };
 

@@ -25,20 +25,58 @@ const patientsRequiringDiagnosis = [
     imageUri: 'mock_uri',
     aiResult: { confidence: 0.78, diagnosis: 'Suspicious lesion requiring review' },
   },
+  {
+    id: '3',
+    patientName: 'Bob Johnson',
+    triageDate: '2024-09-18',
+    riskLevel: 'low',
+    imageUri: 'mock_uri',
+    aiResult: { confidence: 0.45, diagnosis: 'Benign lesion, routine follow-up recommended' },
+  },
+  {
+    id: '4',
+    patientName: 'Alice Brown',
+    triageDate: '2024-09-17',
+    riskLevel: 'high',
+    imageUri: 'mock_uri',
+    aiResult: { confidence: 0.88, diagnosis: 'High suspicion of malignancy' },
+  },
+  {
+    id: '5',
+    patientName: 'Charlie Wilson',
+    triageDate: '2024-09-16',
+    riskLevel: 'medium',
+    imageUri: 'mock_uri',
+    aiResult: { confidence: 0.65, diagnosis: 'Moderate risk lesion' },
+  },
 ];
 
 const DoctorDashboardScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [showFilters, setShowFilters] = React.useState(false);
+  const [selectedRiskFilter, setSelectedRiskFilter] = React.useState<string | null>(null);
   const patientProfileSheetRef = useRef<BottomSheetModal>(null);
   const [selectedPatientId, setSelectedPatientId] = React.useState<string | null>(null);
 
-  const filteredPatients = patientsRequiringDiagnosis.filter(patient =>
-    patient.patientName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPatients = patientsRequiringDiagnosis.filter(patient => {
+    const matchesSearch = patient.patientName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRisk = selectedRiskFilter ? patient.riskLevel === selectedRiskFilter : true;
+    return matchesSearch && matchesRisk;
+  });
 
   const handlePatientPress = (patientId: string) => {
     setSelectedPatientId(patientId);
     patientProfileSheetRef.current?.present();
+  };
+
+  const handleFilterPress = (riskLevel: string | null) => {
+    setSelectedRiskFilter(riskLevel);
+    setShowFilters(false);
+  };
+
+  const clearFilters = () => {
+    setSelectedRiskFilter(null);
+    setShowFilters(false);
   };
 
   const getRiskColor = (risk: string) => {
@@ -97,12 +135,67 @@ const DoctorDashboardScreen: React.FC = () => {
         <Text style={styles.subtitle}>Patients Requiring Diagnosis</Text>
       </View>
 
-      <Searchbar
-        placeholder="Search patients..."
-        onChangeText={setSearchQuery}
-        value={searchQuery}
-        style={styles.searchBar}
-      />
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Search patients..."
+          onChangeText={setSearchQuery}
+          value={searchQuery}
+          style={styles.searchBar}
+        />
+        <Button
+          mode="outlined"
+          onPress={() => setShowFilters(!showFilters)}
+          style={styles.filterButton}
+          icon="filter-variant"
+        >
+          Filter
+        </Button>
+      </View>
+
+      {showFilters && (
+        <View style={styles.filterOptions}>
+          <Text style={styles.filterTitle}>Filter by Risk Level:</Text>
+          <View style={styles.filterButtons}>
+            <Button
+              mode={selectedRiskFilter === 'high' ? 'contained' : 'outlined'}
+              onPress={() => handleFilterPress('high')}
+              style={[styles.riskFilterButton, { borderColor: theme.colors.riskHigh }]}
+              textColor={selectedRiskFilter === 'high' ? theme.colors.textPrimary : theme.colors.riskHigh}
+              buttonColor={selectedRiskFilter === 'high' ? theme.colors.riskHigh : undefined}
+            >
+              High Risk
+            </Button>
+            <Button
+              mode={selectedRiskFilter === 'medium' ? 'contained' : 'outlined'}
+              onPress={() => handleFilterPress('medium')}
+              style={[styles.riskFilterButton, { borderColor: theme.colors.riskMedium }]}
+              textColor={selectedRiskFilter === 'medium' ? theme.colors.textPrimary : theme.colors.riskMedium}
+              buttonColor={selectedRiskFilter === 'medium' ? theme.colors.riskMedium : undefined}
+            >
+              Medium Risk
+            </Button>
+            <Button
+              mode={selectedRiskFilter === 'low' ? 'contained' : 'outlined'}
+              onPress={() => handleFilterPress('low')}
+              style={[styles.riskFilterButton, { borderColor: theme.colors.riskLow }]}
+              textColor={selectedRiskFilter === 'low' ? theme.colors.textPrimary : theme.colors.riskLow}
+              buttonColor={selectedRiskFilter === 'low' ? theme.colors.riskLow : undefined}
+            >
+              Low Risk
+            </Button>
+          </View>
+          {selectedRiskFilter && (
+            <Button
+              mode="text"
+              onPress={clearFilters}
+              style={styles.clearFilterButton}
+              textColor={theme.colors.primary}
+            >
+              Clear Filter
+            </Button>
+          )}
+        </View>
+      )}
 
       <FlatList
         data={filteredPatients}
@@ -154,6 +247,41 @@ const styles = StyleSheet.create({
   searchBar: {
     marginBottom: 16,
     backgroundColor: theme.colors.cardBackground,
+    flex: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  filterButton: {
+    marginLeft: 12,
+    backgroundColor: theme.colors.cardBackground,
+  },
+  filterOptions: {
+    backgroundColor: theme.colors.cardBackground,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+  },
+  filterTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    marginBottom: 12,
+  },
+  filterButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  riskFilterButton: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  clearFilterButton: {
+    alignSelf: 'center',
   },
   patientList: {
     flex: 1,

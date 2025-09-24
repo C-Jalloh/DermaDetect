@@ -12,7 +12,7 @@ import { logout, setOnlineStatus } from '../store/slices/appSlice';
 import { mockCases } from '../services/dummyData';
 import { theme } from '../utils/theme';
 
-type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CHWMain'>;
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();

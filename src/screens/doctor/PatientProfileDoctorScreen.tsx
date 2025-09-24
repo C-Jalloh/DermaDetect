@@ -4,11 +4,11 @@ import { Text, Card, Button, Chip } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { DoctorStackParamList } from '../../navigation/DoctorNavigator';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 import { theme } from '../../utils/theme';
 
-type PatientProfileDoctorRouteProp = RouteProp<DoctorStackParamList, 'PatientProfileDoctor'>;
-type PatientProfileDoctorNavigationProp = StackNavigationProp<DoctorStackParamList, 'PatientProfileDoctor'>;
+type PatientProfileDoctorRouteProp = RouteProp<RootStackParamList, 'PatientProfileDoctor'>;
+type PatientProfileDoctorNavigationProp = StackNavigationProp<RootStackParamList, 'PatientProfileDoctor'>;
 
 interface Props {
   route: PatientProfileDoctorRouteProp;

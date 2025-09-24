@@ -4,11 +4,11 @@ import { Text, Card, Chip } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { CHWStackParamList } from '../../navigation/CHWNavigator';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 import { theme } from '../../utils/theme';
 
-type PatientProfileCHWRouteProp = RouteProp<CHWStackParamList, 'PatientProfileCHW'>;
-type PatientProfileCHWNavigationProp = StackNavigationProp<CHWStackParamList, 'PatientProfileCHW'>;
+type PatientProfileCHWRouteProp = RouteProp<RootStackParamList, 'PatientProfileCHW'>;
+type PatientProfileCHWNavigationProp = StackNavigationProp<RootStackParamList, 'PatientProfileCHW'>;
 
 interface Props {
   route: PatientProfileCHWRouteProp;

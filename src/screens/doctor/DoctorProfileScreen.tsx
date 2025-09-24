@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text, Button, Card, Avatar } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
 import { logout } from '../../store/slices/authSlice';
 import { RootState } from '../../store';
 import { theme } from '../../utils/theme';
@@ -10,6 +11,7 @@ import AlertBottomSheet, { AlertBottomSheetRef } from '../../components/AlertBot
 
 const DoctorProfileScreen: React.FC = () => {
   const dispatch = useDispatch();
+  const navigation = useNavigation();
   const { user } = useSelector((state: RootState) => state.auth);
   const alertBottomSheetRef = useRef<AlertBottomSheetRef>(null);
   const [alertConfig, setAlertConfig] = React.useState<{title: string, message: string, buttons?: any[]} | null>(null);
@@ -85,7 +87,7 @@ const DoctorProfileScreen: React.FC = () => {
         <Card.Content>
           <Button
             mode="outlined"
-            onPress={() => {/* TODO: Navigate to settings */}}
+            onPress={() => navigation.navigate('DoctorSettings' as never)}
             style={styles.actionButton}
             icon="cog"
           >
