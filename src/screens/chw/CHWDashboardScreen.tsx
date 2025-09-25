@@ -1,76 +1,103 @@
 import React from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Text, Card, Button, Searchbar } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
 import { theme } from '../../utils/theme';
+import { PersonIcon, SearchIcon } from '../../assets/icons';
+import { apiService } from '../../services/api';
+
+const SearchBarIcon = ({ color, size }: { color: string; size: number }) => (
+  <SearchIcon width={size} height={size} fill={color} />
+);
 
 type CHWDashboardNavigationProp = StackNavigationProp<RootStackParamList>;
 
-// Mock patients data
-const mockPatients = [
-  {
-    id: '1',
-    firstName: 'John',
-    lastName: 'Doe',
-    dob: '1985-03-15',
-    gender: 'Male',
-    contactInfo: '+1234567890',
-    lastVisit: '2024-09-20',
-  },
-  {
-    id: '2',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    dob: '1990-07-22',
-    gender: 'Female',
-    contactInfo: '+1234567891',
-    lastVisit: '2024-09-18',
-  },
-];
+interface Patient {
+  id: string;
+  demographics: any; // Can be string or object
+  last_modified_at: string;
+}
 
 const CHWDashboardScreen: React.FC = () => {
   const navigation = useNavigation<CHWDashboardNavigationProp>();
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [patients, setPatients] = React.useState<Patient[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const filteredPatients = mockPatients.filter(patient =>
-    `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  React.useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        const data = await apiService.getPatients();
+        setPatients(data);
+      } catch (error) {
+        console.error('Failed to fetch patients:', error);
+        // For now, keep empty or show error
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const renderPatientItem = ({ item }: { item: typeof mockPatients[0] }) => (
-    <Card style={styles.patientCard}>
-      <Card.Content>
-        <View style={styles.patientHeader}>
-          <FontAwesome5 name="user" size={24} color={theme.colors.primary} solid />
-          <View style={styles.patientInfo}>
-            <Text style={styles.patientName}>{item.firstName} {item.lastName}</Text>
-            <Text style={styles.patientDetails}>
-              {item.gender} • {new Date().getFullYear() - new Date(item.dob).getFullYear()} years old
-            </Text>
-            <Text style={styles.lastVisit}>Last visit: {item.lastVisit}</Text>
+    fetchPatients();
+  }, []);
+
+  const filteredPatients = patients.filter(patient => {
+    const demographics = typeof patient.demographics === 'string' 
+      ? JSON.parse(patient.demographics) 
+      : patient.demographics;
+    const name = demographics.name || '';
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const renderPatientItem = ({ item }: { item: Patient }) => {
+    const demographics = typeof item.demographics === 'string' 
+      ? JSON.parse(item.demographics) 
+      : item.demographics;
+    
+    return (
+      <Card style={styles.patientCard}>
+        <Card.Content>
+          <View style={styles.patientHeader}>
+            <PersonIcon width={24} height={24} fill={theme.colors.primary} />
+            <View style={styles.patientInfo}>
+              <Text style={styles.patientName}>
+                {demographics.name || 'Unknown Patient'}
+              </Text>
+              <Text style={styles.patientDetails}>
+                Patient ID: {item.id.slice(0, 8)}...
+              </Text>
+              <Text style={styles.lastVisit}>Last visit: {new Date(item.last_modified_at).toLocaleDateString()}</Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.patientActions}>
-          <Button
-            mode="outlined"
-            onPress={() => navigation.navigate('PatientProfileCHW', { patientId: item.id })}
-            style={styles.actionButton}
-          >
-            View Profile
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => navigation.navigate('PatientProfileCHW', { patientId: item.id })}
-            style={styles.actionButton}
-          >
-            Start Triage
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
-  );
+          <View style={styles.patientActions}>
+            <Button
+              mode="outlined"
+              onPress={() => navigation.navigate('PatientProfileCHW', { patientId: item.id })}
+              style={styles.actionButton}
+            >
+              View Profile
+            </Button>
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate('PatientProfileCHW', { patientId: item.id })}
+              style={styles.actionButton}
+            >
+              Start Triage
+            </Button>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading patients...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -83,7 +110,7 @@ const CHWDashboardScreen: React.FC = () => {
         style={styles.registerButton}
         onPress={() => navigation.navigate('PatientRegistration')}
       >
-        <FontAwesome5 name="user-plus" size={24} color={theme.colors.background} />
+        <PersonIcon width={24} height={24} fill={theme.colors.background} />
         <Text style={styles.registerButtonText}>Register New Patient</Text>
       </TouchableOpacity>
 
@@ -92,6 +119,7 @@ const CHWDashboardScreen: React.FC = () => {
         onChangeText={setSearchQuery}
         value={searchQuery}
         style={styles.searchBar}
+        icon={SearchBarIcon}
       />
 
       <FlatList
@@ -100,6 +128,9 @@ const CHWDashboardScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         style={styles.patientList}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No patients found</Text>
+        }
       />
     </View>
   );
@@ -184,6 +215,12 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: 4,
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    marginTop: 48,
   },
 });
 

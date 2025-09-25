@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, Switch, Button, Appbar } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { RootState } from '../../store';
 import { theme } from '../../utils/theme';
 import AlertBottomSheet, { AlertBottomSheetRef } from '../../components/AlertBottomSheet';
+import { UserIcon, ShieldIcon, BackIcon, AboutIcon, DataStorageIcon, BellIcon, AutoSaveIcon, OfflineModeIcon, HighQualityImagesIcon, BiometricOnIcon, BiometricOffIcon, ClearCacheIcon, ResetToDefaultsIcon } from '../../assets/icons';
+
+// Icon wrapper components to avoid defining during render
+const UserTabIcon = () => <UserIcon width={24} height={24} fill={theme.colors.primary} />;
+const BellTabIcon = () => <BellIcon size={24} color={theme.colors.primary} />;
+const ShieldTabIcon = () => <ShieldIcon size={24} color={theme.colors.primary} />;
+const DatabaseTabIcon = () => <DataStorageIcon width={24} height={24} fill={theme.colors.primary} />;
+const InfoTabIcon = () => <AboutIcon width={24} height={24} fill={theme.colors.primary} />;
+const ClearCacheIconComponent = () => <ClearCacheIcon size={20} color={theme.colors.error} />;
+const ResetToDefaultsIconComponent = () => <ResetToDefaultsIcon size={20} color={theme.colors.error} />;
+const BackActionIcon = ({ color, size }: { color: string; size: number }) => <BackIcon width={size} height={size} fill={color} />;
 
 const CHWSettingsScreen: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -82,7 +92,7 @@ const CHWSettingsScreen: React.FC = () => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <Appbar.Header style={styles.header}>
-        <Appbar.BackAction onPress={() => navigation.goBack()} />
+        <Appbar.Action icon={BackActionIcon} onPress={() => navigation.goBack()} />
         <Appbar.Content title="Settings" />
       </Appbar.Header>
 
@@ -95,7 +105,8 @@ const CHWSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="Account Information"
-          left={() => <FontAwesome5 name="user" size={24} color={theme.colors.primary} />}
+          left={UserTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.accountInfo}>
@@ -106,26 +117,24 @@ const CHWSettingsScreen: React.FC = () => {
             <Text style={styles.accountLabel}>Role:</Text>
             <Text style={styles.accountValue}>{user.role}</Text>
           </View>
-          <View style={styles.accountInfo}>
-            <Text style={styles.accountLabel}>ID:</Text>
-            <Text style={styles.accountValue}>{user.id}</Text>
-          </View>
         </Card.Content>
       </Card>
 
       {/* App Preferences */}
       <Card style={styles.card}>
-        <Card.Title
-          title="App Preferences"
-          left={() => <FontAwesome5 name="cog" size={24} color={theme.colors.primary} />}
+                <Card.Title
+          title="Notifications"
+          left={BellTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="bell" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <BellIcon size={20} color={theme.colors.textSecondary} />
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Push Notifications</Text>
-                <Text style={styles.settingDescription}>Receive notifications for new tasks and updates</Text>
               </View>
             </View>
             <Switch
@@ -137,10 +146,11 @@ const CHWSettingsScreen: React.FC = () => {
 
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="save" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <AutoSaveIcon size={20} color={theme.colors.textSecondary} />
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Auto-save Data</Text>
-                <Text style={styles.settingDescription}>Automatically save patient data and triage results</Text>
               </View>
             </View>
             <Switch
@@ -152,10 +162,11 @@ const CHWSettingsScreen: React.FC = () => {
 
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="wifi" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <OfflineModeIcon size={20} color={theme.colors.textSecondary} />
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Offline Mode</Text>
-                <Text style={styles.settingDescription}>Allow app to work without internet connection</Text>
               </View>
             </View>
             <Switch
@@ -169,17 +180,19 @@ const CHWSettingsScreen: React.FC = () => {
 
       {/* Camera Settings */}
       <Card style={styles.card}>
-        <Card.Title
-          title="Camera Settings"
-          left={() => <FontAwesome5 name="camera" size={24} color={theme.colors.primary} />}
+                <Card.Title
+          title="Data & Storage"
+          left={DatabaseTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="image" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <HighQualityImagesIcon size={20} color={theme.colors.textSecondary} />
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>High Quality Images</Text>
-                <Text style={styles.settingDescription}>Capture images in highest quality (uses more storage)</Text>
               </View>
             </View>
             <Switch
@@ -195,15 +208,21 @@ const CHWSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="Security"
-          left={() => <FontAwesome5 name="shield-alt" size={24} color={theme.colors.primary} />}
+          left={ShieldTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="fingerprint" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                {biometricAuth ? (
+                  <BiometricOnIcon size={20} color={theme.colors.textSecondary} />
+                ) : (
+                  <BiometricOffIcon size={20} color={theme.colors.textSecondary} />
+                )}
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Biometric Authentication</Text>
-                <Text style={styles.settingDescription}>Use fingerprint/face unlock for app access</Text>
               </View>
             </View>
             <Switch
@@ -219,14 +238,15 @@ const CHWSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="Data Management"
-          left={() => <FontAwesome5 name="database" size={24} color={theme.colors.primary} />}
+          left={DatabaseTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <Button
             mode="outlined"
             onPress={handleClearCache}
             style={styles.actionButton}
-            icon="delete"
+            icon={ClearCacheIconComponent}
           >
             Clear Cache
           </Button>
@@ -234,7 +254,7 @@ const CHWSettingsScreen: React.FC = () => {
             mode="outlined"
             onPress={handleResetSettings}
             style={styles.actionButton}
-            icon="refresh"
+            icon={ResetToDefaultsIconComponent}
           >
             Reset to Defaults
           </Button>
@@ -245,7 +265,8 @@ const CHWSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="About"
-          left={() => <FontAwesome5 name="info-circle" size={24} color={theme.colors.primary} />}
+          left={InfoTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.aboutInfo}>
@@ -298,6 +319,11 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
     elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
   },
   accountInfo: {
     flexDirection: 'row',

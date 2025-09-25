@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Image } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
@@ -6,6 +6,8 @@ import { useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../../utils/theme';
 import AlertBottomSheet, { AlertBottomSheetRef } from '../../components/AlertBottomSheet';
+import { StethoscopeIcon } from '../../assets/icons';
+import { apiService } from '../../services/api';
 
 type DiagnosisRouteProp = RouteProp<any, 'Diagnosis'>;
 type DiagnosisNavigationProp = StackNavigationProp<any, 'Diagnosis'>;
@@ -21,56 +23,105 @@ const DiagnosisScreen: React.FC<Props> = ({ route }) => {
   const [alertConfig, setAlertConfig] = useState<{title: string, message: string, buttons?: any[]} | null>(null);
   const [diagnosis, setDiagnosis] = useState('');
   const [prescription, setPrescription] = useState('');
+  const [caseData, setCaseData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock triage data
-  const triageData = {
-    id: triageId,
-    patientName: 'John Doe',
-    imageUri: 'https://via.placeholder.com/300x200?text=Skin+Lesion',
-    aiResult: {
-      confidence: 0.92,
-      diagnosis: 'Potential malignant lesion',
-      riskLevel: 'high',
-    },
-  };
+  useEffect(() => {
+    const fetchCaseData = async () => {
+      try {
+        const data = await apiService.getCase(triageId);
+        setCaseData(data);
+      } catch (error) {
+        console.error('Error fetching case data:', error);
+        setAlertConfig({
+          title: 'Error',
+          message: 'Failed to load case data. Please try again.',
+          buttons: [{ text: 'OK', onPress: () => navigation.goBack() }]
+        });
+        alertBottomSheetRef.current?.present();
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleSaveDiagnosis = () => {
+    fetchCaseData();
+  }, [triageId, navigation]);
+
+  const handleSaveDiagnosis = async () => {
     if (!diagnosis.trim()) {
       setAlertConfig({ title: 'Error', message: 'Please enter a diagnosis' });
       alertBottomSheetRef.current?.present();
       return;
     }
 
-    // TODO: Save diagnosis to database and mark triage as diagnosed
-    setAlertConfig({
-      title: 'Success',
-      message: 'Diagnosis saved successfully. This will help improve the AI model.',
-      buttons: [{ text: 'OK', onPress: () => navigation.goBack() }]
-    });
-    alertBottomSheetRef.current?.present();
+    try {
+      await apiService.createDiagnosis(triageId, {
+        diagnosis: diagnosis.trim(),
+        prescription: prescription.trim() || null,
+      });
+
+      setAlertConfig({
+        title: 'Success',
+        message: 'Diagnosis saved successfully. This will help improve the AI model.',
+        buttons: [{ text: 'OK', onPress: () => navigation.goBack() }]
+      });
+      alertBottomSheetRef.current?.present();
+    } catch (error) {
+      console.error('Error saving diagnosis:', error);
+      setAlertConfig({
+        title: 'Error',
+        message: 'Failed to save diagnosis. Please try again.',
+      });
+      alertBottomSheetRef.current?.present();
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading case data...</Text>
+      </View>
+    );
+  }
+
+  if (!caseData) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Case not found</Text>
+      </View>
+    );
+  }
+
+  // Extract patient name and image from case data
+  const patientName = caseData.patient?.name || 'Unknown Patient';
+  const imageUri = caseData.image_url || 'https://via.placeholder.com/300x200?text=No+Image';
+  const aiResult = caseData.ai_analysis || {
+    confidence: 0,
+    diagnosis: 'No AI analysis available',
+    risk_level: 'unknown',
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <FontAwesome5 name="stethoscope" size={32} color={theme.colors.primary} />
+        <StethoscopeIcon width={32} height={32} fill={theme.colors.primary} />
         <Text style={styles.title}>Create Diagnosis</Text>
-        <Text style={styles.subtitle}>{triageData.patientName}</Text>
+        <Text style={styles.subtitle}>{patientName}</Text>
       </View>
 
       <Card style={styles.imageCard}>
         <Card.Content>
           <Text style={styles.sectionTitle}>Triage Image</Text>
           <Image
-            source={{ uri: triageData.imageUri }}
+            source={{ uri: imageUri }}
             style={styles.triageImage}
             resizeMode="cover"
           />
           <View style={styles.aiResult}>
             <Text style={styles.aiLabel}>AI Analysis:</Text>
-            <Text style={styles.aiDiagnosis}>{triageData.aiResult.diagnosis}</Text>
+            <Text style={styles.aiDiagnosis}>{aiResult.diagnosis}</Text>
             <Text style={styles.aiConfidence}>
-              Confidence: {(triageData.aiResult.confidence * 100).toFixed(1)}%
+              Confidence: {(aiResult.confidence * 100).toFixed(1)}%
             </Text>
           </View>
         </Card.Content>
@@ -138,6 +189,12 @@ const DiagnosisScreen: React.FC<Props> = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: theme.colors.background,
   },
   header: {

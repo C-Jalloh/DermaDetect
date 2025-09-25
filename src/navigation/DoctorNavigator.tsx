@@ -1,6 +1,23 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import { HomeIcon, UserIcon, PendingIcon } from '../assets/icons';
+
+// Icon wrapper components to avoid defining during render
+const HomeTabIcon = ({ color, size }: { color: string; size: number }) => (
+  <HomeIcon width={size} height={size} fill={color} />
+);
+
+// const BellTabIcon = ({ color, size }: { color: string; size: number }) => (
+//   <BellIcon size={size} color={color} />
+// );
+
+const PendingTabIcon = ({ color, size }: { color: string; size: number }) => (
+  <PendingIcon width={size} height={size} fill={color} />
+);
+
+const UserTabIcon = ({ color, size }: { color: string; size: number }) => (
+  <UserIcon width={size} height={size} fill={color} />
+);
 
 // Doctor Screens
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
@@ -20,19 +37,14 @@ const DoctorNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused: _, color, size }) => {
-          let iconName: string;
-
           if (route.name === 'DoctorDashboard') {
-            iconName = 'tachometer-alt';
+            return HomeTabIcon({ color, size });
           } else if (route.name === 'DoctorPending') {
-            iconName = 'clipboard-list';
+            return PendingTabIcon({ color, size });
           } else if (route.name === 'DoctorProfile') {
-            iconName = 'user-md';
-          } else {
-            iconName = 'question';
+            return UserTabIcon({ color, size });
           }
-
-          return <FontAwesome5 name={iconName} size={size} color={color} />;
+          return UserTabIcon({ color, size }); // fallback
         },
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: 'gray',

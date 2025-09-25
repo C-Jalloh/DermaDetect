@@ -1,13 +1,28 @@
 import React, { useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, Card, Avatar } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { logout } from '../../store/slices/authSlice';
 import { RootState } from '../../store';
 import { theme } from '../../utils/theme';
 import AlertBottomSheet, { AlertBottomSheetRef } from '../../components/AlertBottomSheet';
+import {
+  AnalyzeIcon,
+  TriageIcon,
+  WeekIcon,
+  SettingsIcon,
+  HelpIcon,
+  LogoutIcon
+} from '../../assets/icons';
+
+// Icon wrapper components to avoid defining during render
+const DiagnosesIcon = () => <AnalyzeIcon width={24} height={24} fill={theme.colors.primary} />;
+const PendingIcon = () => <TriageIcon width={24} height={24} fill={theme.colors.primary} />;
+const WeekIconComponent = () => <WeekIcon width={24} height={24} fill={theme.colors.primary} />;
+const SettingsIconComponent = () => <SettingsIcon width={20} height={20} fill={theme.colors.primary} />;
+const HelpIconComponent = () => <HelpIcon width={20} height={20} fill={theme.colors.primary} />;
+const LogoutIconComponent = () => <LogoutIcon width={20} height={20} fill={theme.colors.onError} />;
 
 const DoctorProfileScreen: React.FC = () => {
   const dispatch = useDispatch();
@@ -65,18 +80,18 @@ const DoctorProfileScreen: React.FC = () => {
 
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
-              <FontAwesome5 name="user-md" size={24} color={theme.colors.primary} />
-              <Text style={styles.statNumber}>47</Text>
+              <DiagnosesIcon />
+              <Text style={styles.statNumber}>{user?.stats?.diagnoses || 0}</Text>
               <Text style={styles.statLabel}>Diagnoses</Text>
             </View>
             <View style={styles.statItem}>
-              <FontAwesome5 name="clipboard-list" size={24} color={theme.colors.primary} />
-              <Text style={styles.statNumber}>12</Text>
+              <PendingIcon />
+              <Text style={styles.statNumber}>{user?.stats?.pending_cases || 0}</Text>
               <Text style={styles.statLabel}>Pending</Text>
             </View>
             <View style={styles.statItem}>
-              <FontAwesome5 name="calendar-check" size={24} color={theme.colors.primary} />
-              <Text style={styles.statNumber}>8</Text>
+              <WeekIconComponent />
+              <Text style={styles.statNumber}>{user?.stats?.this_week || 0}</Text>
               <Text style={styles.statLabel}>This Week</Text>
             </View>
           </View>
@@ -89,7 +104,7 @@ const DoctorProfileScreen: React.FC = () => {
             mode="outlined"
             onPress={() => navigation.navigate('DoctorSettings' as never)}
             style={styles.actionButton}
-            icon="cog"
+            icon={SettingsIconComponent}
           >
             Settings
           </Button>
@@ -97,7 +112,7 @@ const DoctorProfileScreen: React.FC = () => {
             mode="outlined"
             onPress={() => {/* TODO: Navigate to help */}}
             style={styles.actionButton}
-            icon="help-circle"
+            icon={HelpIconComponent}
           >
             Help & Support
           </Button>
@@ -109,7 +124,7 @@ const DoctorProfileScreen: React.FC = () => {
           mode="contained"
           onPress={handleLogout}
           style={styles.logoutButton}
-          icon="logout"
+          icon={LogoutIconComponent}
           buttonColor={theme.colors.error}
         >
           Log Out

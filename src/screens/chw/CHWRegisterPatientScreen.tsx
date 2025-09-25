@@ -1,11 +1,11 @@
 import React, { useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, Card } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { theme } from '../../utils/theme';
 import BaseBottomSheet from '../../components/BaseBottomSheet';
 import RegisterPatientBottomSheet from '../bottomSheets/RegisterPatientBottomSheet';
+import { PersonIcon } from '../../assets/icons';
 
 const CHWRegisterPatientScreen: React.FC = () => {
   const registerSheetRef = useRef<BottomSheetModal>(null);
@@ -23,7 +23,7 @@ const CHWRegisterPatientScreen: React.FC = () => {
 
       <Card style={styles.card}>
         <Card.Content style={styles.cardContent}>
-          <FontAwesome5 name="user-plus" size={64} color={theme.colors.primary} style={styles.icon} />
+          <PersonIcon width={64} height={64} fill={theme.colors.primary} />
           <Text style={styles.description}>
             Register a new patient to begin their medical journey with DermaDetect.
             Collect their basic information and start providing care.

@@ -1,96 +1,101 @@
-import React, { useRef } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
-import { Text, Card, Button, Searchbar, Chip } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { Text, Button, Searchbar, ActivityIndicator } from 'react-native-paper';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { theme } from '../../utils/theme';
 import BaseBottomSheet from '../../components/BaseBottomSheet';
+import PatientCard from '../../components/PatientCard';
 import PatientProfileDoctorBottomSheet from '../bottomSheets/PatientProfileDoctorBottomSheet';
+import { SuccessIcon, SearchIcon } from '../../assets/icons';
+import { apiService } from '../../services/api';
 
-// Mock pending patients (similar to dashboard but different data)
-const pendingPatients = [
-  {
-    id: '3',
-    patientName: 'Alice Johnson',
-    triageDate: '2024-09-21',
-    riskLevel: 'high',
-    imageUri: 'mock_uri',
-    aiResult: { confidence: 0.89, diagnosis: 'High-risk lesion detected' },
-    pendingSince: '2 days',
-  },
-  {
-    id: '4',
-    patientName: 'Bob Wilson',
-    triageDate: '2024-09-22',
-    riskLevel: 'medium',
-    imageUri: 'mock_uri',
-    aiResult: { confidence: 0.76, diagnosis: 'Requires specialist review' },
-    pendingSince: '1 day',
-  },
-];
+// Icon wrapper component to avoid defining during render
+const SearchBarIcon = () => (
+  <SearchIcon width={20} height={20} fill={theme.colors.textSecondary} />
+);
+
+interface PendingCase {
+  id: string;
+  patient_id: string;
+  chw_id: string;
+  triage_data: string;
+  ai_analysis: string | null;
+  status: string;
+  risk_level: string;
+  image_urls: string;
+  created_at: string;
+  updated_at: string;
+  last_modified_at: string;
+  patient?: {
+    demographics: string;
+  };
+  chw?: {
+    name: string;
+  };
+}
 
 const DoctorPendingScreen: React.FC = () => {
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pendingCases, setPendingCases] = useState<PendingCase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const patientProfileSheetRef = useRef<BottomSheetModal>(null);
-  const [selectedPatientId, setSelectedPatientId] = React.useState<string | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [selectedCaseData, setSelectedCaseData] = useState<any>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredPatients = pendingPatients.filter(patient =>
-    patient.patientName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    const loadPendingCases = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const cases = await apiService.getPendingCases();
+      setPendingCases(cases);
+    } catch (fetchError) {
+      console.error('Error fetching pending cases:', fetchError);
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load pending cases');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const handlePatientPress = (patientId: string) => {
-    setSelectedPatientId(patientId);
-    patientProfileSheetRef.current?.present();
-  };
+  useEffect(() => {
+    loadPendingCases();
+  }, [loadPendingCases]);
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'high': return theme.colors.riskHigh;
-      case 'medium': return theme.colors.riskMedium;
-      case 'low': return theme.colors.riskLow;
-      default: return theme.colors.textSecondary;
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadPendingCases();
+    setRefreshing(false);
+  }, [loadPendingCases]);
+
+  const filteredCases = pendingCases.filter(caseItem => {
+    if (!searchQuery) return true;
+    try {
+      const demographics = JSON.parse(caseItem.patient?.demographics || '{}');
+      const patientName = demographics.name || 'Unknown Patient';
+      return patientName.toLowerCase().includes(searchQuery.toLowerCase());
+    } catch {
+      return false;
+    }
+  });
+
+  const handlePatientPress = (caseId: string) => {
+    // Find the case by ID and get the patient ID
+    const caseItem = pendingCases.find(c => c.id === caseId);
+    if (caseItem) {
+      setSelectedPatientId(caseItem.patient_id);
+      setSelectedCaseData(caseItem); // Store the full case data
+      patientProfileSheetRef.current?.present();
     }
   };
 
-  const renderPatientItem = ({ item }: { item: typeof pendingPatients[0] }) => (
-    <Card style={styles.patientCard}>
-      <Card.Content>
-        <View style={styles.patientHeader}>
-          <FontAwesome5 name="user-md" size={24} color={theme.colors.primary} />
-          <View style={styles.patientInfo}>
-            <Text style={styles.patientName}>{item.patientName}</Text>
-            <Text style={styles.triageDate}>Triage: {item.triageDate}</Text>
-            <Text style={styles.pendingTime}>Pending: {item.pendingSince}</Text>
-          </View>
-          <Chip
-            style={[styles.riskChip, { backgroundColor: getRiskColor(item.riskLevel) }]}
-            textStyle={{ color: theme.colors.textPrimary }}
-          >
-            {item.riskLevel.toUpperCase()} RISK
-          </Chip>
-        </View>
-
-        <Text style={styles.aiDiagnosis}>{item.aiResult.diagnosis}</Text>
-        <Text style={styles.confidence}>AI Confidence: {(item.aiResult.confidence * 100).toFixed(1)}%</Text>
-
-        <View style={styles.patientActions}>
-          <Button
-            mode="outlined"
-            onPress={() => handlePatientPress(item.id)}
-            style={styles.actionButton}
-          >
-            View Details
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => handlePatientPress(item.id)}
-            style={styles.actionButton}
-          >
-            Create Diagnosis
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
+  const renderPatientItem = ({ item }: { item: PendingCase }) => (
+    <PatientCard
+      caseItem={item}
+      onViewDetails={handlePatientPress}
+      onCreateDiagnosis={handlePatientPress}
+      buttonMode="both"
+    />
   );
 
   return (
@@ -105,21 +110,43 @@ const DoctorPendingScreen: React.FC = () => {
         onChangeText={setSearchQuery}
         value={searchQuery}
         style={styles.searchBar}
+        icon={SearchBarIcon}
       />
 
-      <FlatList
-        data={filteredPatients}
-        renderItem={renderPatientItem}
-        keyExtractor={(item) => item.id}
-        style={styles.patientList}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <FontAwesome5 name="check-circle" size={48} color={theme.colors.textSecondary} />
-            <Text style={styles.emptyText}>No pending diagnoses</Text>
-          </View>
-        }
-      />
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading pending cases...</Text>
+        </View>
+      )}
+
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button mode="outlined" onPress={loadPendingCases}>
+            Retry
+          </Button>
+        </View>
+      )}
+
+      {!loading && !error && (
+        <FlatList
+          data={filteredCases}
+          renderItem={renderPatientItem}
+          keyExtractor={(item) => item.id}
+          style={styles.patientList}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <SuccessIcon width={48} height={48} fill={theme.colors.textSecondary} />
+              <Text style={styles.emptyText}>No pending diagnoses</Text>
+            </View>
+          }
+        />
+      )}
 
       <BaseBottomSheet
         ref={patientProfileSheetRef}
@@ -128,6 +155,7 @@ const DoctorPendingScreen: React.FC = () => {
       >
         <PatientProfileDoctorBottomSheet
           patientId={selectedPatientId}
+          caseData={selectedCaseData}
           onDismiss={() => patientProfileSheetRef.current?.dismiss()}
         />
       </BaseBottomSheet>
@@ -186,12 +214,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.textSecondary,
   },
-  pendingTime: {
+  statusText: {
     fontSize: 12,
-    color: theme.colors.error,
     fontWeight: 'bold',
   },
+  chipsContainer: {
+    alignItems: 'flex-end',
+  },
   riskChip: {
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  statusChip: {
     alignSelf: 'flex-start',
   },
   aiDiagnosis: {
@@ -222,6 +256,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.textSecondary,
     marginTop: 16,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  errorText: {
+    fontSize: 16,
+    color: theme.colors.error,
+    marginBottom: 16,
     textAlign: 'center',
   },
 });

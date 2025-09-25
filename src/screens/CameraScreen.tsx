@@ -6,10 +6,24 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import AlertBottomSheet, { AlertBottomSheetRef } from '../components/AlertBottomSheet';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import { BackIcon, FlashIcon, AutoFocusIcon, CameraIcon, CloseIcon, RedoIcon, AnalyzeIcon } from '../assets/icons';
 
 type CameraScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Camera'>;
 type CameraScreenRouteProp = RouteProp<RootStackParamList, 'Camera'>;
+
+// Icon wrapper for back action
+const BackActionIcon = ({ color, size }: { color: string; size: number }) => <BackIcon width={size} height={size} fill={color} />;
+
+// Icon wrapper for redo action
+const RedoActionIcon = ({ color, size }: { color: string; size: number }) => <RedoIcon width={size} height={size} fill={color} />;
+
+// Icon wrapper for analyze action
+const AnalyzeActionIcon = ({ color, size }: { color: string; size: number }) => <AnalyzeIcon width={size} height={size} fill={color} />;
+
+// Icon wrappers for camera controls
+const FlashButtonIcon = ({ color, size }: { color: string; size: number }) => <FlashIcon width={size} height={size} fill={color} />;
+const FocusButtonIcon = ({ color, size }: { color: string; size: number }) => <AutoFocusIcon width={size} height={size} fill={color} />;
+const ShutterButtonIcon = ({ color, size }: { color: string; size: number }) => <CameraIcon width={size} height={size} fill={color} />;
 
 const CameraScreen: React.FC = () => {
   const [capturing, setCapturing] = useState(false);
@@ -27,8 +41,9 @@ const CameraScreen: React.FC = () => {
 
   // New state for enhanced camera features
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
-  const [flashMode, setFlashMode] = useState<'off' | 'on' | 'auto'>('off');
+  const [flashMode, _setFlashMode] = useState<'off' | 'on' | 'auto'>('off');
   const [focusMode, setFocusMode] = useState<'auto' | 'manual'>('auto');
+  const [torchMode, setTorchMode] = useState<'off' | 'on'>('off');
 
   useEffect(() => {
     const checkPermission = async () => {
@@ -96,15 +111,13 @@ const CameraScreen: React.FC = () => {
   };
 
   const toggleFlash = () => {
-    const modes: ('off' | 'on' | 'auto')[] = ['off', 'on', 'auto'];
-    const currentIndex = modes.indexOf(flashMode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    console.log('Toggling flash from', flashMode, 'to', modes[nextIndex]);
-    setFlashMode(modes[nextIndex]);
+    const newTorchMode = torchMode === 'off' ? 'on' : 'off';
+    console.log('Toggling torch from', torchMode, 'to', newTorchMode);
+    setTorchMode(newTorchMode);
 
     setAlertConfig({
-      title: 'Flash Mode',
-      message: `Flash set to: ${modes[nextIndex].toUpperCase()}`
+      title: 'Flashlight',
+      message: `Flashlight ${newTorchMode === 'on' ? 'ON' : 'OFF'}`
     });
     alertBottomSheetRef.current?.present();
   };
@@ -126,7 +139,27 @@ const CameraScreen: React.FC = () => {
     setCapturedImages(newImages);
   };
 
+  const handleCancel = () => {
+    console.log('Back button pressed, turning off flashlight and navigating back');
+    // Turn off flashlight before navigating away
+    setTorchMode('off');
+    navigation.goBack();
+  };
+
+  const handleRedo = () => {
+    console.log('Redo button pressed, clearing all captured images');
+    setCapturedImages([]);
+    setAlertConfig({
+      title: 'Session Reset',
+      message: 'All captured images have been cleared. Start fresh!'
+    });
+    alertBottomSheetRef.current?.present();
+  };
+
   const handleDone = () => {
+    console.log('Done button pressed, turning off flashlight and navigating to results');
+    // Turn off flashlight before navigating to results
+    setTorchMode('off');
     if (capturedImages.length > 0) {
       navigation.navigate('Result', {
         imageUri: capturedImages[0],
@@ -140,11 +173,6 @@ const CameraScreen: React.FC = () => {
       });
       alertBottomSheetRef.current?.present();
     }
-  };
-
-  const handleCancel = () => {
-    console.log('Back button pressed, navigating back');
-    navigation.goBack();
   };
 
   if (!hasPermission) {
@@ -169,11 +197,16 @@ const CameraScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Navigation Bar */}
       <Appbar.Header style={styles.navbar}>
-        <Appbar.BackAction onPress={handleCancel} />
+        <Appbar.Action icon={BackActionIcon} onPress={handleCancel} />
         <Appbar.Content title={`Triage - Patient ${patientId}`} />
-        {capturedImages.length > 0 && (
-          <Appbar.Action icon="check" onPress={handleDone} />
-        )}
+        <View style={styles.headerActions}>
+          {capturedImages.length > 0 && (
+            <Appbar.Action icon={RedoActionIcon} onPress={handleRedo} />
+          )}
+          {capturedImages.length > 0 && (
+            <Appbar.Action icon={AnalyzeActionIcon} onPress={handleDone} />
+          )}
+        </View>
       </Appbar.Header>
 
       {/* Captured Images Preview */}
@@ -187,7 +220,7 @@ const CameraScreen: React.FC = () => {
                   style={styles.removeButton}
                   onPress={() => removeImage(index)}
                 >
-                  <FontAwesome5 name="times" size={12} color="#FFFFFF" />
+                  <CloseIcon width={12} height={12} fill="#FFFFFF" />
                 </TouchableOpacity>
                 <Text style={styles.previewLabel}>{index + 1}</Text>
               </View>
@@ -206,6 +239,7 @@ const CameraScreen: React.FC = () => {
         device={device}
         isActive={true}
         photo={true}
+        torch={torchMode}
         onError={(error) => {
           console.error('Camera error:', error);
           setAlertConfig({ title: 'Camera Error', message: 'Failed to initialize camera' });
@@ -229,16 +263,16 @@ const CameraScreen: React.FC = () => {
             onPress={toggleFlash}
             style={styles.controlButton}
             textColor="#FFFFFF"
-            icon={flashMode === 'off' ? 'flash-off' : flashMode === 'on' ? 'flash' : 'flash-auto'}
+            icon={FlashButtonIcon}
           >
-            {flashMode.toUpperCase()}
+            {''}
           </Button>
           <Button
             mode="outlined"
             onPress={toggleFocus}
             style={styles.controlButton}
             textColor="#FFFFFF"
-            icon={focusMode === 'auto' ? 'focus-auto' : 'focus-field'}
+            icon={FocusButtonIcon}
           >
             {focusMode.toUpperCase()}
           </Button>
@@ -248,7 +282,7 @@ const CameraScreen: React.FC = () => {
       {/* Capture Button */}
       <View style={styles.captureContainer}>
         <FAB
-          icon="camera"
+          icon={ShutterButtonIcon}
           size="medium"
           onPress={handleCapture}
           loading={capturing}
@@ -275,6 +309,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     elevation: 0,
     zIndex: 20,
+  },
+  headerActions: {
+    flexDirection: 'row',
   },
   previewContainer: {
     position: 'absolute',

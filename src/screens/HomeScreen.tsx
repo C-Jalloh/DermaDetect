@@ -120,7 +120,7 @@ const HomeScreen: React.FC = () => {
         >
           <TouchableOpacity
             style={styles.triageButton}
-            onPress={() => navigation.navigate('PatientConsent')}
+            onPress={() => navigation.navigate('PatientConsent', {})}
           >
             <View style={styles.buttonIcon}>
               <MaterialIcons name="camera" size={36} color={theme.colors.background} />

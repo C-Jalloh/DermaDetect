@@ -1,72 +1,76 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
-import { Text, Card, Button, Searchbar, Chip } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import { Text, Button, Searchbar } from 'react-native-paper';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { theme } from '../../utils/theme';
 import BaseBottomSheet from '../../components/BaseBottomSheet';
+import PatientCard from '../../components/PatientCard';
 import PatientProfileDoctorBottomSheet from '../bottomSheets/PatientProfileDoctorBottomSheet';
+import { SuccessIcon, SearchIcon, FilterIcon } from '../../assets/icons';
+import { apiService } from '../../services/api';
 
-// Mock patients requiring diagnosis
-const patientsRequiringDiagnosis = [
-  {
-    id: '1',
-    patientName: 'John Doe',
-    triageDate: '2024-09-20',
-    riskLevel: 'high',
-    imageUri: 'mock_uri',
-    aiResult: { confidence: 0.92, diagnosis: 'Potential malignant lesion' },
-  },
-  {
-    id: '2',
-    patientName: 'Jane Smith',
-    triageDate: '2024-09-19',
-    riskLevel: 'medium',
-    imageUri: 'mock_uri',
-    aiResult: { confidence: 0.78, diagnosis: 'Suspicious lesion requiring review' },
-  },
-  {
-    id: '3',
-    patientName: 'Bob Johnson',
-    triageDate: '2024-09-18',
-    riskLevel: 'low',
-    imageUri: 'mock_uri',
-    aiResult: { confidence: 0.45, diagnosis: 'Benign lesion, routine follow-up recommended' },
-  },
-  {
-    id: '4',
-    patientName: 'Alice Brown',
-    triageDate: '2024-09-17',
-    riskLevel: 'high',
-    imageUri: 'mock_uri',
-    aiResult: { confidence: 0.88, diagnosis: 'High suspicion of malignancy' },
-  },
-  {
-    id: '5',
-    patientName: 'Charlie Wilson',
-    triageDate: '2024-09-16',
-    riskLevel: 'medium',
-    imageUri: 'mock_uri',
-    aiResult: { confidence: 0.65, diagnosis: 'Moderate risk lesion' },
-  },
-];
+// Icon wrapper components to avoid defining during render
+const SearchBarIcon = () => (
+  <SearchIcon width={20} height={20} fill={theme.colors.textSecondary} />
+);
+
+const FilterButtonIcon = () => (
+  <FilterIcon width={20} height={20} fill={theme.colors.primary} />
+);
 
 const DoctorDashboardScreen: React.FC = () => {
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [showFilters, setShowFilters] = React.useState(false);
-  const [selectedRiskFilter, setSelectedRiskFilter] = React.useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedRiskFilter, setSelectedRiskFilter] = useState<string | null>(null);
+  const [pendingCases, setPendingCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const patientProfileSheetRef = useRef<BottomSheetModal>(null);
-  const [selectedPatientId, setSelectedPatientId] = React.useState<string | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [selectedCaseData, setSelectedCaseData] = useState<any>(null);
 
-  const filteredPatients = patientsRequiringDiagnosis.filter(patient => {
-    const matchesSearch = patient.patientName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRisk = selectedRiskFilter ? patient.riskLevel === selectedRiskFilter : true;
+  useEffect(() => {
+    const fetchPendingCases = async () => {
+      try {
+        const cases = await apiService.getPendingCases();
+        setPendingCases(cases);
+      } catch (error) {
+        console.error('Error fetching pending cases:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPendingCases();
+  }, []);
+
+  const filteredPatients = pendingCases.filter(caseItem => {
+    let patientName = 'Unknown Patient';
+    try {
+      let demographics = caseItem.patient?.demographics;
+      
+      // Handle both string and object formats
+      if (typeof demographics === 'string') {
+        demographics = JSON.parse(demographics);
+      }
+      
+      patientName = (demographics as any)?.name || 'Unknown Patient';
+    } catch (e) {
+      console.warn('Failed to parse patient demographics for filtering:', e);
+    }
+    
+    const matchesSearch = patientName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRisk = selectedRiskFilter ? caseItem.risk_level === selectedRiskFilter : true;
     return matchesSearch && matchesRisk;
   });
 
   const handlePatientPress = (patientId: string) => {
-    setSelectedPatientId(patientId);
-    patientProfileSheetRef.current?.present();
+    // Find the case data for this patient
+    const caseItem = pendingCases.find(c => c.patient_id === patientId || c.id === patientId);
+    if (caseItem) {
+      setSelectedPatientId(caseItem.patient_id);
+      setSelectedCaseData(caseItem);
+      patientProfileSheetRef.current?.present();
+    }
   };
 
   const handleFilterPress = (riskLevel: string | null) => {
@@ -79,54 +83,22 @@ const DoctorDashboardScreen: React.FC = () => {
     setShowFilters(false);
   };
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'high': return theme.colors.riskHigh;
-      case 'medium': return theme.colors.riskMedium;
-      case 'low': return theme.colors.riskLow;
-      default: return theme.colors.textSecondary;
-    }
-  };
-
-  const renderPatientItem = ({ item }: { item: typeof patientsRequiringDiagnosis[0] }) => (
-    <Card style={styles.patientCard}>
-      <Card.Content>
-        <View style={styles.patientHeader}>
-          <FontAwesome5 name="user-md" size={24} color={theme.colors.primary} />
-          <View style={styles.patientInfo}>
-            <Text style={styles.patientName}>{item.patientName}</Text>
-            <Text style={styles.triageDate}>Triage: {item.triageDate}</Text>
-          </View>
-          <Chip
-            style={[styles.riskChip, { backgroundColor: getRiskColor(item.riskLevel) }]}
-            textStyle={{ color: theme.colors.textPrimary }}
-          >
-            {item.riskLevel.toUpperCase()} RISK
-          </Chip>
-        </View>
-
-        <Text style={styles.aiDiagnosis}>{item.aiResult.diagnosis}</Text>
-        <Text style={styles.confidence}>AI Confidence: {(item.aiResult.confidence * 100).toFixed(1)}%</Text>
-
-        <View style={styles.patientActions}>
-          <Button
-            mode="outlined"
-            onPress={() => handlePatientPress(item.id)}
-            style={styles.actionButton}
-          >
-            View Details
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => handlePatientPress(item.id)}
-            style={styles.actionButton}
-          >
-            Create Diagnosis
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
+  const renderPatientItem = ({ item }: { item: any }) => (
+    <PatientCard
+      caseItem={item}
+      onViewDetails={(caseId) => handlePatientPress(caseId)}
+      onCreateDiagnosis={(caseId) => handlePatientPress(caseId)}
+      buttonMode="view-only"
+    />
   );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading pending cases...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -141,12 +113,13 @@ const DoctorDashboardScreen: React.FC = () => {
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={styles.searchBar}
+          icon={SearchBarIcon}
         />
         <Button
           mode="outlined"
           onPress={() => setShowFilters(!showFilters)}
           style={styles.filterButton}
-          icon="filter-variant"
+          icon={FilterButtonIcon}
         >
           Filter
         </Button>
@@ -205,7 +178,7 @@ const DoctorDashboardScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <FontAwesome5 name="check-circle" size={48} color={theme.colors.textSecondary} />
+            <SuccessIcon width={48} height={48} fill={theme.colors.textSecondary} />
             <Text style={styles.emptyText}>No patients requiring diagnosis</Text>
           </View>
         }
@@ -218,6 +191,7 @@ const DoctorDashboardScreen: React.FC = () => {
       >
         <PatientProfileDoctorBottomSheet
           patientId={selectedPatientId}
+          caseData={selectedCaseData}
           onDismiss={() => patientProfileSheetRef.current?.dismiss()}
         />
       </BaseBottomSheet>
@@ -230,6 +204,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
   },
   header: {
     marginBottom: 24,
@@ -285,53 +265,6 @@ const styles = StyleSheet.create({
   },
   patientList: {
     flex: 1,
-  },
-  patientCard: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: 8,
-    marginBottom: 12,
-    elevation: 2,
-  },
-  patientHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  patientInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  patientName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.textPrimary,
-    marginBottom: 4,
-  },
-  triageDate: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-  },
-  riskChip: {
-    alignSelf: 'flex-start',
-  },
-  aiDiagnosis: {
-    fontSize: 14,
-    color: theme.colors.textPrimary,
-    marginBottom: 4,
-    fontStyle: 'italic',
-  },
-  confidence: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginBottom: 12,
-  },
-  patientActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
-    flex: 1,
-    marginHorizontal: 4,
   },
   emptyContainer: {
     alignItems: 'center',

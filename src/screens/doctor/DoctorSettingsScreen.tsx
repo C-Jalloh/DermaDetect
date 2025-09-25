@@ -1,20 +1,38 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, Switch, Button, Appbar } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { RootState } from '../../store';
 import { theme } from '../../utils/theme';
+import {
+  BackIcon,
+  SecurityIcon,
+  BellIcon,
+  AutoSaveIcon,
+  OfflineModeIcon,
+  HighQualityImagesIcon,
+  BiometricOnIcon,
+  BiometricOffIcon,
+  ClearCacheIcon,
+  ResetToDefaultsIcon,
+  StethoscopeIcon,
+  DatabaseIcon,
+  CameraIcon,
+  UserIcon,
+  ShieldIcon
+} from '../../assets/icons';
 import AlertBottomSheet, { AlertBottomSheetRef } from '../../components/AlertBottomSheet';
 
-// Icon components to avoid defining during render
-const UserMdIcon = () => <FontAwesome5 name="user-md" size={24} color={theme.colors.primary} />;
-const StethoscopeIcon = () => <FontAwesome5 name="stethoscope" size={24} color={theme.colors.primary} />;
-const DatabaseIcon = () => <FontAwesome5 name="database" size={24} color={theme.colors.primary} />;
-const CameraIcon = () => <FontAwesome5 name="camera" size={24} color={theme.colors.primary} />;
-const ShieldIcon = () => <FontAwesome5 name="shield-alt" size={24} color={theme.colors.primary} />;
-const TrashIcon = () => <FontAwesome5 name="trash-alt" size={24} color={theme.colors.primary} />;
+// Icon wrapper components to avoid defining during render
+const UserTabIcon = () => <UserIcon width={24} height={24} fill={theme.colors.primary} />;
+const StethoscopeTabIcon = () => <StethoscopeIcon width={24} height={24} fill={theme.colors.primary} />;
+const DatabaseTabIcon = () => <DatabaseIcon width={24} height={24} fill={theme.colors.primary} />;
+const CameraTabIcon = () => <CameraIcon width={24} height={24} fill={theme.colors.primary} />;
+const SecurityTabIcon = () => <SecurityIcon size={24} color={theme.colors.primary} />;
+const ClearCacheTabIcon = () => <ClearCacheIcon size={20} color={theme.colors.error} />;
+const ResetToDefaultsIconComponent = () => <ResetToDefaultsIcon size={20} color={theme.colors.error} />;
+const BackActionIcon = ({ color, size }: { color: string; size: number }) => <BackIcon width={size} height={size} fill={color} />;
 
 const DoctorSettingsScreen: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -94,7 +112,7 @@ const DoctorSettingsScreen: React.FC = () => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <Appbar.Header style={styles.header}>
-        <Appbar.BackAction onPress={() => navigation.goBack()} />
+        <Appbar.Action icon={BackActionIcon} onPress={() => navigation.goBack()} />
         <Appbar.Content title="Settings" />
       </Appbar.Header>
 
@@ -107,7 +125,8 @@ const DoctorSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="Account Information"
-          left={UserMdIcon}
+          left={UserTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.accountInfo}>
@@ -117,10 +136,6 @@ const DoctorSettingsScreen: React.FC = () => {
           <View style={styles.accountInfo}>
             <Text style={styles.accountLabel}>Role:</Text>
             <Text style={styles.accountValue}>{user.role}</Text>
-          </View>
-          <View style={styles.accountInfo}>
-            <Text style={styles.accountLabel}>License ID:</Text>
-            <Text style={styles.accountValue}>MD-{user.id}</Text>
           </View>
           <View style={styles.accountInfo}>
             <Text style={styles.accountLabel}>Specialization:</Text>
@@ -133,15 +148,17 @@ const DoctorSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="Clinical Preferences"
-          left={StethoscopeIcon}
+          left={StethoscopeTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="bell" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <BellIcon size={20} color={theme.colors.textSecondary} />
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Push Notifications</Text>
-                <Text style={styles.settingDescription}>Receive notifications for urgent cases and updates</Text>
               </View>
             </View>
             <Switch
@@ -153,10 +170,11 @@ const DoctorSettingsScreen: React.FC = () => {
 
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="exclamation-triangle" size={20} color={theme.colors.riskHigh} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <ShieldIcon size={20} color={theme.colors.riskHigh} />
+              </View>
               <View style={styles.settingText}>
-                <Text style={styles.settingTitle}>Urgent Case Alerts</Text>
-                <Text style={styles.settingDescription}>Immediate notifications for high-risk referrals</Text>
+                <Text style={styles.settingTitle}>Urgent Alerts</Text>
               </View>
             </View>
             <Switch
@@ -168,10 +186,11 @@ const DoctorSettingsScreen: React.FC = () => {
 
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="save" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <AutoSaveIcon size={20} color={theme.colors.textSecondary} />
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Auto-save Diagnoses</Text>
-                <Text style={styles.settingDescription}>Automatically save diagnosis notes and treatment plans</Text>
               </View>
             </View>
             <Switch
@@ -183,10 +202,11 @@ const DoctorSettingsScreen: React.FC = () => {
 
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="calendar-alt" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <BellIcon size={20} color={theme.colors.textSecondary} />
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Case Reminders</Text>
-                <Text style={styles.settingDescription}>Daily reminders for pending cases and follow-ups</Text>
               </View>
             </View>
             <Switch
@@ -202,15 +222,17 @@ const DoctorSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="Data & Privacy"
-          left={DatabaseIcon}
+          left={DatabaseTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="wifi" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <OfflineModeIcon size={20} color={theme.colors.textSecondary} />
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Offline Mode</Text>
-                <Text style={styles.settingDescription}>Access patient records without internet connection</Text>
               </View>
             </View>
             <Switch
@@ -226,15 +248,17 @@ const DoctorSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="Imaging Settings"
-          left={CameraIcon}
+          left={CameraTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="image" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                <HighQualityImagesIcon size={20} color={theme.colors.textSecondary} />
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>High Resolution Images</Text>
-                <Text style={styles.settingDescription}>View patient images in highest quality for detailed analysis</Text>
               </View>
             </View>
             <Switch
@@ -250,15 +274,21 @@ const DoctorSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="Security"
-          left={ShieldIcon}
+          left={SecurityTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
-              <FontAwesome5 name="fingerprint" size={20} color={theme.colors.textSecondary} style={styles.settingIcon} />
+              <View style={styles.settingIcon}>
+                {biometricAuth ? (
+                  <BiometricOnIcon size={20} color={theme.colors.textSecondary} />
+                ) : (
+                  <BiometricOffIcon size={20} color={theme.colors.textSecondary} />
+                )}
+              </View>
               <View style={styles.settingText}>
                 <Text style={styles.settingTitle}>Biometric Authentication</Text>
-                <Text style={styles.settingDescription}>Use fingerprint or face ID for quick access</Text>
               </View>
             </View>
             <Switch
@@ -274,14 +304,15 @@ const DoctorSettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Title
           title="Data Management"
-          left={TrashIcon}
+          left={ClearCacheTabIcon}
+          titleStyle={styles.cardTitle}
         />
         <Card.Content>
           <Button
             mode="outlined"
             onPress={handleClearCache}
             style={styles.managementButton}
-            icon="delete-sweep"
+            icon={ClearCacheTabIcon}
             textColor={theme.colors.error}
           >
             Clear Cache
@@ -294,7 +325,7 @@ const DoctorSettingsScreen: React.FC = () => {
             mode="outlined"
             onPress={handleResetSettings}
             style={[styles.managementButton, styles.resetButton]}
-            icon="restore"
+            icon={ResetToDefaultsIconComponent}
             textColor={theme.colors.error}
           >
             Reset to Defaults
@@ -344,6 +375,11 @@ const styles = StyleSheet.create({
     margin: 16,
     marginTop: 0,
     elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
   },
   accountInfo: {
     flexDirection: 'row',

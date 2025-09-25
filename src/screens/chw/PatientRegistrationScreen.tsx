@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { CHWTabParamList } from '../../navigation/CHWNavigator';
 import { theme } from '../../utils/theme';
 import AlertBottomSheet, { AlertBottomSheetRef } from '../../components/AlertBottomSheet';
+import { PersonIcon } from '../../assets/icons';
+import { apiService } from '../../services/api';
 
 type PatientRegistrationNavigationProp = StackNavigationProp<CHWTabParamList, 'CHWRegisterPatient'>;
 
@@ -14,6 +15,7 @@ const PatientRegistrationScreen: React.FC = () => {
   const navigation = useNavigation<PatientRegistrationNavigationProp>();
   const alertBottomSheetRef = useRef<AlertBottomSheetRef>(null);
   const [alertConfig, setAlertConfig] = useState<{title: string, message: string, buttons?: any[]} | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -27,7 +29,7 @@ const PatientRegistrationScreen: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Basic validation
     if (!formData.firstName || !formData.lastName || !formData.dob || !formData.gender) {
       setAlertConfig({ title: 'Error', message: 'Please fill in all required fields' });
@@ -35,19 +37,47 @@ const PatientRegistrationScreen: React.FC = () => {
       return;
     }
 
-    // TODO: Save to database
-    setAlertConfig({
-      title: 'Success',
-      message: 'Patient registered successfully',
-      buttons: [{ text: 'OK', onPress: () => navigation.goBack() }]
-    });
-    alertBottomSheetRef.current?.present();
+    setIsLoading(true);
+    try {
+      // Prepare patient data for API - demographics should be a JSON string
+      const demographics = {
+        name: `${formData.firstName} ${formData.lastName}`,
+        age: formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : null,
+        gender: formData.gender,
+        phone: formData.contactPhone,
+        address: '', // Could be added to form later
+        emergency_contact: formData.emergencyContact,
+      };
+
+      const patientData = {
+        demographics: JSON.stringify(demographics)
+      };
+
+      // Call API to create patient
+      await apiService.createPatient(patientData);
+
+      setAlertConfig({
+        title: 'Success',
+        message: 'Patient registered successfully',
+        buttons: [{ text: 'OK', onPress: () => navigation.goBack() }]
+      });
+      alertBottomSheetRef.current?.present();
+    } catch (error) {
+      console.error('Error creating patient:', error);
+      setAlertConfig({
+        title: 'Error',
+        message: 'Failed to register patient. Please try again.'
+      });
+      alertBottomSheetRef.current?.present();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <FontAwesome5 name="user-plus" size={32} color={theme.colors.primary} solid />
+        <PersonIcon width={32} height={32} fill={theme.colors.primary} />
         <Text style={styles.title}>Register New Patient</Text>
         <Text style={styles.subtitle}>Enter patient demographic information</Text>
       </View>
@@ -118,8 +148,10 @@ const PatientRegistrationScreen: React.FC = () => {
               mode="contained"
               onPress={handleSave}
               style={[styles.button, styles.saveButton]}
+              loading={isLoading}
+              disabled={isLoading}
             >
-              Save Patient
+              {isLoading ? 'Saving...' : 'Save Patient'}
             </Button>
           </View>
         </Card.Content>

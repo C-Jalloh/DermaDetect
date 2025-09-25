@@ -1,18 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
-import { Text, Card, Button, IconButton, ProgressBar } from 'react-native-paper';
+import { Text, Card, Button } from 'react-native-paper';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import LottieView from 'lottie-react-native';
-import { BarChart } from 'react-native-gifted-charts';
 import { useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { simulateAIAnalysis } from '../services/dummyData';
 import { theme } from '../utils/theme';
+import { CheckIcon, NeutralIcon, NextIcon, PreviousIcon, SuccessIcon, ThumbsDownIcon, ThumbsUpIcon } from '../assets/icons';
 import TriageResultBottomSheet, { TriageResultBottomSheetRef } from '../components/TriageResultBottomSheet';
 import DataEnrichmentBottomSheet, { DataEnrichmentBottomSheetRef, DataEnrichmentData } from '../components/DataEnrichmentBottomSheet';
 import ConfirmationBottomSheet, { ConfirmationBottomSheetRef } from '../components/ConfirmationBottomSheet';
 import { launchImageLibrary, launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
+import { apiService } from '../services/api';
 
 type ResultScreenRouteProp = RouteProp<RootStackParamList, 'Result'>;
 type ResultScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Result'>;
@@ -28,7 +28,6 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [analyzing, setAnalyzing] = useState(true);
   const [result, setResult] = useState<'low' | 'medium' | 'high' | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
   const navigation = useNavigation<ResultScreenNavigationProp>();
 
   // Bottom sheet refs
@@ -42,7 +41,18 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
   useEffect(() => {
     const analyzeImage = async () => {
       try {
-        const analysisResult = await simulateAIAnalysis(imageUri);
+        // Determine risk level based on number of images
+        let analysisResult: 'low' | 'medium' | 'high';
+        if (allImages.length === 1) {
+          analysisResult = 'low'; // 1 image = low risk/green
+        } else if (allImages.length === 2) {
+          analysisResult = 'medium'; // 2 images = medium risk/yellow
+        } else {
+          analysisResult = 'high'; // 3+ images = high risk/red
+        }
+
+        // Simulate processing delay
+        await new Promise<void>(resolve => setTimeout(resolve, 2000));
         setResult(analysisResult);
       } catch (error) {
         console.error('Analysis failed:', error);
@@ -53,7 +63,7 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
     };
 
     analyzeImage();
-  }, [imageUri]);
+  }, [imageUri, allImages.length]);
 
   const getResultColor = () => {
     switch (result) {
@@ -79,6 +89,15 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
       case 'medium': return 'Moderate risk factors present';
       case 'high': return 'High-risk characteristics detected';
       default: return '';
+    }
+  };
+
+  const getResultIcon = () => {
+    switch (result) {
+      case 'low': return <ThumbsUpIcon width={30} height={30} fill={theme.colors.textPrimary} />;
+      case 'medium': return <NeutralIcon width={30} height={30} fill={theme.colors.textPrimary} />;
+      case 'high': return <ThumbsDownIcon width={30} height={30} fill={theme.colors.textPrimary} />;
+      default: return <MaterialIcons name="check-circle" size={30} color={theme.colors.textPrimary} />;
     }
   };
 
@@ -119,26 +138,40 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
     }
   };
 
-  const getConfidenceData = () => {
-    // Mock confidence data
-    switch (result) {
-      case 'low':
-        return { confidence: 0.87, probabilities: { low: 0.87, medium: 0.11, high: 0.02 } };
-      case 'medium':
-        return { confidence: 0.76, probabilities: { low: 0.15, medium: 0.76, high: 0.09 } };
-      case 'high':
-        return { confidence: 0.92, probabilities: { low: 0.03, medium: 0.05, high: 0.92 } };
-      default:
-        return { confidence: 0, probabilities: { low: 0, medium: 0, high: 0 } };
-    }
-  };
+  const handleContinue = async () => {
+    try {
+      // Prepare triage data for all cases
+      const triageData = {
+        timestamp: new Date().toISOString(),
+        risk_level: result,
+        images_count: allImages.length
+      };
 
-  const handleContinue = () => {
-    if (result === 'high') {
-      // Show triage result bottom sheet for high risk cases
-      triageResultSheetRef.current?.present();
-    } else {
-      // Navigate to CHW home screen for non-high risk cases
+      // Prepare case data
+      const caseData = {
+        patient_id: patientId,
+        triage_data: JSON.stringify(triageData),
+        risk_level: result || 'medium',
+        image_urls: JSON.stringify(allImages)
+      };
+
+      // Save case to backend
+      await apiService.createCase(caseData);
+
+      if (result === 'high') {
+        // Show triage result bottom sheet for high risk cases
+        triageResultSheetRef.current?.present();
+      } else {
+        // Navigate to CHW home screen for non-high risk cases
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'CHWMain' }],
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save case:', error);
+      // TODO: Show error message to user
+      // For now, still navigate
       navigation.reset({
         index: 0,
         routes: [{ name: 'CHWMain' }],
@@ -163,18 +196,67 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
     }, 300);
   };
 
-  const handleConfirmationConfirm = () => {
-    // TODO: Save case to database with urgent flag
-    // For now, just navigate back with success message
-    confirmationSheetRef.current?.dismiss();
-    // Show success message and navigate to CHW home screen
-    setTimeout(() => {
-      // Navigate to CHW home screen instead of going back to camera
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'CHWMain' }],
-      });
-    }, 500);
+  const handleConfirmationConfirm = async () => {
+    try {
+      // Prepare triage data
+      const triageData = {
+        timestamp: new Date().toISOString(),
+        risk_level: result,
+        images_count: allImages.length,
+        enrichment_data: enrichmentData ? {
+          symptoms: enrichmentData.symptoms,
+          lesion_characteristics: enrichmentData.lesionCharacteristics,
+          urgency_level: enrichmentData.urgencyLevel,
+          notes: enrichmentData.notes,
+          additional_images_count: enrichmentData.additionalImages?.length || 0
+        } : null
+      };
+
+      // Prepare case data
+      const caseData = {
+        patient_id: patientId,
+        triage_data: JSON.stringify(triageData),
+        risk_level: result || 'medium',
+        image_urls: JSON.stringify(allImages)
+      };
+
+      // Save case to backend
+      await apiService.createCase(caseData);
+
+      confirmationSheetRef.current?.dismiss();
+      
+      // Show success message and navigate to CHW home screen
+      if (result === 'high') {
+        // For high-risk cases, show message about MedGemma analysis
+        Alert.alert(
+          'Case Submitted Successfully',
+          'Your high-risk case has been submitted and is now being analyzed by our advanced AI system (MedGemma) for detailed assessment. The doctor will be notified once analysis is complete.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'CHWMain' }],
+                });
+              },
+            },
+          ]
+        );
+      } else {
+        // For low/medium risk cases, navigate directly
+        setTimeout(() => {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'CHWMain' }],
+          });
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Failed to save case:', error);
+      // TODO: Show error message to user
+      confirmationSheetRef.current?.dismiss();
+    }
   };
 
   const handleConfirmationEdit = () => {
@@ -285,31 +367,6 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
     );
   }
 
-  const confidenceData = getConfidenceData();
-
-  const getChartData = () => {
-    const probabilities = confidenceData.probabilities;
-    return [
-      {
-        value: probabilities.low * 100,
-        label: 'Low',
-        frontColor: theme.colors.riskLow,
-      },
-      {
-        value: probabilities.medium * 100,
-        label: 'Medium',
-        frontColor: theme.colors.riskMedium,
-      },
-      {
-        value: probabilities.high * 100,
-        label: 'High',
-        frontColor: theme.colors.riskHigh,
-      },
-    ];
-  };
-
-  const chartData = getChartData();
-
   return (
     <>
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -330,10 +387,10 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
                 onPress={prevImage}
                 disabled={currentImageIndex === 0}
               >
-                <MaterialIcons 
-                  name="chevron-left" 
-                  size={32} 
-                  color={currentImageIndex === 0 ? theme.colors.textSecondary : theme.colors.textPrimary} 
+                <PreviousIcon 
+                  width={32} 
+                  height={32} 
+                  fill={currentImageIndex === 0 ? theme.colors.textSecondary : theme.colors.textPrimary} 
                 />
               </TouchableOpacity>
               
@@ -342,10 +399,10 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
                 onPress={nextImage}
                 disabled={currentImageIndex === allImages.length - 1}
               >
-                <MaterialIcons 
-                  name="chevron-right" 
-                  size={32} 
-                  color={currentImageIndex === allImages.length - 1 ? theme.colors.textSecondary : theme.colors.textPrimary} 
+                <NextIcon 
+                  width={32} 
+                  height={32} 
+                  fill={currentImageIndex === allImages.length - 1 ? theme.colors.textSecondary : theme.colors.textPrimary} 
                 />
               </TouchableOpacity>
             </>
@@ -360,6 +417,12 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
             </Text>
           </View>
         )}
+
+        {/* Analysis status indicator */}
+        <View style={styles.analysisStatus}>
+          <SuccessIcon width={16} height={16} fill={theme.colors.success} />
+          <Text style={styles.analysisStatusText}>Analysis Complete</Text>
+        </View>
       </View>
 
       {/* PRIMARY RESULT - At-a-glance, no scrolling needed */}
@@ -367,7 +430,7 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
         <Card style={[styles.primaryResultCard, { backgroundColor: getResultColor() }]}>
           <Card.Content style={styles.primaryResultContent}>
             <View style={styles.resultIcon}>
-              <MaterialIcons name="check-circle" size={30} color={theme.colors.textPrimary} />
+              {getResultIcon()}
             </View>
             <View style={styles.resultText}>
               <Text style={styles.primaryResultTitle}>{getResultTitle()}</Text>
@@ -384,61 +447,13 @@ const ResultScreen: React.FC<Props> = ({ route }) => {
             <Text style={styles.sectionTitle}>Recommendations</Text>
             {getRecommendations().map((recommendation, index) => (
               <View key={index} style={styles.recommendationItem}>
-                <MaterialIcons name="arrow-right" size={16} color={theme.colors.primary} />
+                <CheckIcon width={16} height={16} fill={theme.colors.primary} />
                 <Text style={styles.recommendationText}>{recommendation}</Text>
               </View>
             ))}
           </Card.Content>
         </Card>
       </View>
-
-      {/* DETAILED ANALYSIS - Collapsible */}
-      <Card style={styles.detailsCard}>
-        <TouchableOpacity
-          style={styles.detailsHeader}
-          onPress={() => setShowDetails(!showDetails)}
-        >
-          <Text style={styles.sectionTitle}>View Detailed Analysis</Text>
-          <IconButton
-            icon={showDetails ? 'chevron-up' : 'chevron-down'}
-            iconColor={theme.colors.textSecondary}
-            size={24}
-          />
-        </TouchableOpacity>
-
-        {showDetails && (
-          <Card.Content style={styles.detailsContent}>
-            {/* Confidence Level */}
-            <Text style={styles.detailSubtitle}>Confidence Level</Text>
-            <ProgressBar
-              progress={confidenceData.confidence}
-              color={getResultColor()}
-              style={styles.progressBar}
-            />
-            <Text style={styles.confidenceText}>
-              {(confidenceData.confidence * 100).toFixed(1)}%
-            </Text>
-
-            {/* Classification Probabilities */}
-            <Text style={styles.detailSubtitleWithMargin}>Classification Probabilities</Text>
-            <BarChart
-              data={chartData}
-              width={300}
-              height={200}
-              barWidth={40}
-              spacing={20}
-              barBorderRadius={4}
-              yAxisThickness={0}
-              xAxisThickness={0}
-              hideRules
-              hideYAxisText
-              showValuesAsTopLabel
-              topLabelTextStyle={{ color: theme.colors.textPrimary, fontSize: 12 }}
-              xAxisLabelTextStyle={{ color: theme.colors.textSecondary, fontSize: 12 }}
-            />
-          </Card.Content>
-        )}
-      </Card>
 
       {/* Action Buttons */}
       <View style={styles.buttonContainer}>
@@ -593,73 +608,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     lineHeight: 24,
   },
-  detailsCard: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.cardBorder,
-    marginBottom: 24,
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  detailsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  detailsContent: {
-    padding: 16,
-    paddingTop: 0,
-  },
-  detailSubtitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.colors.textPrimary,
-    marginBottom: 12,
-  },
-  detailSubtitleWithMargin: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.colors.textPrimary,
-    marginBottom: 12,
-    marginTop: 24,
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  confidenceText: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    textAlign: 'right',
-  },
-  probabilityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  probabilityLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  probabilityDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  probabilityLabel: {
-    fontSize: 16,
-    color: theme.colors.textPrimary,
-  },
-  probabilityValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.colors.textPrimary,
-  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -735,6 +683,23 @@ const styles = StyleSheet.create({
   imageCounterText: {
     color: 'white',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  analysisStatus: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  analysisStatusText: {
+    color: 'white',
+    fontSize: 12,
     fontWeight: 'bold',
   },
 });

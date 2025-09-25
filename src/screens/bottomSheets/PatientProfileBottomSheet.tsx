@@ -1,48 +1,12 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, Card } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { theme } from '../../utils/theme';
 import BaseBottomSheet from '../../components/BaseBottomSheet';
 import AddVitalsBottomSheet from './AddVitalsBottomSheet';
-
-// Mock patient data - in real app, fetch from database
-const getMockPatient = (patientId: string | null) => {
-  const patients = {
-    '1': {
-      id: '1',
-      firstName: 'John',
-      lastName: 'Doe',
-      dob: '1985-03-15',
-      gender: 'Male',
-      contactInfo: '+1234567890',
-      lastVisit: '2024-09-20',
-      vitals: {
-        bloodPressure: '120/80',
-        heartRate: '72 bpm',
-        temperature: '98.6°F',
-        weight: '180 lbs',
-      },
-    },
-    '2': {
-      id: '2',
-      firstName: 'Jane',
-      lastName: 'Smith',
-      dob: '1990-07-22',
-      gender: 'Female',
-      contactInfo: '+1234567891',
-      lastVisit: '2024-09-18',
-      vitals: {
-        bloodPressure: '118/75',
-        heartRate: '68 bpm',
-        temperature: '98.4°F',
-        weight: '145 lbs',
-      },
-    },
-  };
-  return patientId ? patients[patientId as keyof typeof patients] : null;
-};
+import { ProfileIcon, BloodPressureIcon, TemperatureIcon, WeightIcon } from '../../assets/icons';
+import { apiService } from '../../services/api';
 
 interface PatientProfileBottomSheetProps {
   patientId: string | null;
@@ -55,102 +19,157 @@ const PatientProfileBottomSheet: React.FC<PatientProfileBottomSheetProps> = ({
   onDismiss,
   navigation,
 }) => {
+  const [patientData, setPatientData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const addVitalsSheetRef = useRef<BottomSheetModal>(null);
 
-  const patient = getMockPatient(patientId);
+  useEffect(() => {
+    const fetchPatientData = async () => {
+      if (!patientId) {
+        setLoading(false);
+        return;
+      }
 
-  if (!patient) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Patient not found</Text>
-      </View>
-    );
-  }
+      try {
+        const data = await apiService.getPatient(patientId);
+        setPatientData(data);
+      } catch (error) {
+        console.error('Error fetching patient data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleStartTriage = () => {
-    onDismiss();
-    // Navigate to full-screen Camera (as camera needs full screen)
-    navigation.navigate('Camera', { patientId: patient.id });
-  };
+    fetchPatientData();
+  }, [patientId]);
 
   const handleAddVitals = () => {
     addVitalsSheetRef.current?.present();
   };
 
+  const handleViewFullProfile = () => {
+    if (patientData?.id) {
+      navigation?.navigate('PatientProfileCHW', { patientId: patientData.id });
+    }
+    onDismiss();
+  };
+
+  if (loading) {
+    return (
+      <BaseBottomSheet>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading patient data...</Text>
+        </View>
+      </BaseBottomSheet>
+    );
+  }
+
+  if (!patientData) {
+    return (
+      <BaseBottomSheet>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorText}>Patient not found</Text>
+        </View>
+      </BaseBottomSheet>
+    );
+  }
+
+  // Parse demographics from the API response
+  let demographics = patientData.demographics;
+  
+  // Handle both string and object formats
+  if (typeof demographics === 'string') {
+    try {
+      demographics = JSON.parse(demographics);
+    } catch (e) {
+      console.warn('Failed to parse patient demographics in CHW profile:', e);
+      demographics = {};
+    }
+  }
+  
+  const vitals = patientData.vitals || [];
+
   return (
-    <View style={styles.container}>
-      <Card style={styles.patientCard}>
-        <Card.Content>
-          <View style={styles.patientHeader}>
-            <FontAwesome5 name="user" size={32} color={theme.colors.primary} solid />
-            <View style={styles.patientInfo}>
-              <Text style={styles.patientName}>
-                {patient.firstName} {patient.lastName}
-              </Text>
-              <Text style={styles.patientDetails}>
-                {patient.gender} • {new Date().getFullYear() - new Date(patient.dob).getFullYear()} years old
-              </Text>
-              <Text style={styles.contactInfo}>{patient.contactInfo}</Text>
-            </View>
-          </View>
-        </Card.Content>
-      </Card>
+    <BaseBottomSheet>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <ProfileIcon width={32} height={32} fill={theme.colors.primary} />
+          <Text style={styles.title}>
+            {demographics.name || 'Unknown Patient'}
+          </Text>
+          <Text style={styles.subtitle}>Patient Profile</Text>
+        </View>
 
-      <Card style={styles.vitalsCard}>
-        <Card.Title title="Latest Vitals" />
-        <Card.Content>
-          <View style={styles.vitalsGrid}>
-            <View style={styles.vitalItem}>
-              <Text style={styles.vitalLabel}>Blood Pressure</Text>
-              <Text style={styles.vitalValue}>{patient.vitals.bloodPressure}</Text>
-            </View>
-            <View style={styles.vitalItem}>
-              <Text style={styles.vitalLabel}>Heart Rate</Text>
-              <Text style={styles.vitalValue}>{patient.vitals.heartRate}</Text>
-            </View>
-            <View style={styles.vitalItem}>
-              <Text style={styles.vitalLabel}>Temperature</Text>
-              <Text style={styles.vitalValue}>{patient.vitals.temperature}</Text>
-            </View>
-            <View style={styles.vitalItem}>
-              <Text style={styles.vitalLabel}>Weight</Text>
-              <Text style={styles.vitalValue}>{patient.vitals.weight}</Text>
-            </View>
-          </View>
-        </Card.Content>
-      </Card>
+        <Card style={styles.demographicsCard}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>Demographics</Text>
+            <Text style={styles.infoText}>Age: {demographics.age || 'Unknown'} years</Text>
+            <Text style={styles.infoText}>Gender: {demographics.gender || 'Unknown'}</Text>
+            <Text style={styles.infoText}>Contact: {demographics.phone || 'No contact info'}</Text>
+            <Text style={styles.infoText}>Address: {demographics.address || 'Not provided'}</Text>
+          </Card.Content>
+        </Card>
 
-      <View style={styles.actionsContainer}>
-        <Button
-          mode="contained"
-          onPress={handleStartTriage}
-          style={styles.primaryButton}
-          icon="camera"
-        >
-          + Start New Triage
-        </Button>
+        <Card style={styles.vitalsCard}>
+          <Card.Content>
+            <View style={styles.vitalsHeader}>
+              <Text style={styles.sectionTitle}>Latest Vitals</Text>
+              <Button
+                mode="outlined"
+                onPress={handleAddVitals}
+                style={styles.addVitalsButton}
+              >
+                Add Vitals
+              </Button>
+            </View>
 
-        <Button
-          mode="outlined"
-          onPress={handleAddVitals}
-          style={styles.secondaryButton}
-          icon="plus"
-        >
-          + Add Vitals / Update
-        </Button>
+            {vitals.length > 0 ? (
+              <View style={styles.vitalsGrid}>
+                <View style={styles.vitalItem}>
+                  <BloodPressureIcon width={24} height={24} fill={theme.colors.primary} />
+                  <Text style={styles.vitalLabel}>Blood Pressure</Text>
+                  <Text style={styles.vitalValue}>{vitals[0].blood_pressure || 'N/A'}</Text>
+                </View>
+                <View style={styles.vitalItem}>
+                  <TemperatureIcon width={24} height={24} fill={theme.colors.primary} />
+                  <Text style={styles.vitalLabel}>Temperature</Text>
+                  <Text style={styles.vitalValue}>{vitals[0].temperature || 'N/A'}</Text>
+                </View>
+                <View style={styles.vitalItem}>
+                  <WeightIcon width={24} height={24} fill={theme.colors.primary} />
+                  <Text style={styles.vitalLabel}>Weight</Text>
+                  <Text style={styles.vitalValue}>{vitals[0].weight || 'N/A'}</Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.noVitalsText}>No vitals recorded yet</Text>
+            )}
+          </Card.Content>
+        </Card>
+
+        <View style={styles.actions}>
+          <Button
+            mode="outlined"
+            onPress={onDismiss}
+            style={styles.actionButton}
+          >
+            Close
+          </Button>
+          <Button
+            mode="contained"
+            onPress={handleViewFullProfile}
+            style={styles.actionButton}
+          >
+            View Full Profile
+          </Button>
+        </View>
       </View>
 
-      <BaseBottomSheet
-        ref={addVitalsSheetRef}
-        title="Add Vitals"
-        snapPoints={['60%', '80%']}
-      >
-        <AddVitalsBottomSheet
-          patientId={patientId}
-          onDismiss={() => addVitalsSheetRef.current?.dismiss()}
-        />
-      </BaseBottomSheet>
-    </View>
+      <AddVitalsBottomSheet
+        patientId={patientId}
+        onDismiss={() => addVitalsSheetRef.current?.dismiss()}
+      />
+    </BaseBottomSheet>
   );
 };
 
@@ -158,42 +177,66 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+  },
   errorText: {
     textAlign: 'center',
     fontSize: 16,
     color: theme.colors.error,
-    marginTop: 20,
   },
-  patientCard: {
-    backgroundColor: theme.colors.cardBackground,
-    marginBottom: 16,
-  },
-  patientHeader: {
-    flexDirection: 'row',
+  header: {
     alignItems: 'center',
+    padding: 24,
   },
-  patientInfo: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  patientName: {
+  title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: theme.colors.textPrimary,
-    marginBottom: 4,
+    marginTop: 16,
+    marginBottom: 8,
   },
-  patientDetails: {
+  subtitle: {
     fontSize: 16,
     color: theme.colors.textSecondary,
-    marginBottom: 2,
   },
-  contactInfo: {
+  demographicsCard: {
+    margin: 16,
+    marginTop: 0,
+    backgroundColor: theme.colors.cardBackground,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.textPrimary,
+    marginBottom: 16,
+  },
+  infoText: {
     fontSize: 14,
     color: theme.colors.textSecondary,
+    marginBottom: 8,
   },
   vitalsCard: {
+    margin: 16,
+    marginTop: 0,
     backgroundColor: theme.colors.cardBackground,
+  },
+  vitalsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
+  },
+  addVitalsButton: {
+    borderColor: theme.colors.primary,
   },
   vitalsGrid: {
     flexDirection: 'row',
@@ -207,21 +250,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.textSecondary,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginTop: 4,
+    marginBottom: 2,
   },
   vitalValue: {
     fontSize: 16,
     fontWeight: 'bold',
     color: theme.colors.textPrimary,
   },
-  actionsContainer: {
-    gap: 12,
+  noVitalsText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 16,
   },
-  primaryButton: {
-    marginBottom: 8,
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    margin: 16,
+    marginTop: 0,
   },
-  secondaryButton: {
-    borderColor: theme.colors.primary,
+  actionButton: {
+    flex: 1,
+    marginHorizontal: 8,
   },
 });
 

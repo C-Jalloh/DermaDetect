@@ -1,23 +1,26 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../../utils/theme';
 import AlertBottomSheet, { AlertBottomSheetRef } from '../../components/AlertBottomSheet';
+import { HeartRateIcon } from '../../assets/icons';
+import { apiService } from '../../services/api';
 
-type AddVitalsRouteProp = RouteProp<any, 'AddVitals'>;
+type AddVitalsRouteProp = RouteProp<{ AddVitals: { patientId: string } }, 'AddVitals'>;
 type AddVitalsNavigationProp = StackNavigationProp<any, 'AddVitals'>;
 
 interface Props {
   route: AddVitalsRouteProp;
 }
 
-const AddVitalsScreen: React.FC<Props> = () => {
+const AddVitalsScreen: React.FC<Props> = ({ route }) => {
   const navigation = useNavigation<AddVitalsNavigationProp>();
   const alertBottomSheetRef = useRef<AlertBottomSheetRef>(null);
   const [alertConfig, setAlertConfig] = useState<{title: string, message: string, buttons?: any[]} | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { patientId } = route.params;
   const [formData, setFormData] = useState({
     temperature: '',
     bloodPressure: '',
@@ -29,7 +32,7 @@ const AddVitalsScreen: React.FC<Props> = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Basic validation
     if (!formData.temperature || !formData.bloodPressure || !formData.weight) {
       setAlertConfig({ title: 'Error', message: 'Please fill in all required vital signs' });
@@ -37,19 +40,37 @@ const AddVitalsScreen: React.FC<Props> = () => {
       return;
     }
 
-    // TODO: Save to database
-    setAlertConfig({
-      title: 'Success',
-      message: 'Vitals recorded successfully',
-      buttons: [{ text: 'OK', onPress: () => navigation.goBack() }]
-    });
-    alertBottomSheetRef.current?.present();
+    setIsLoading(true);
+    try {
+      await apiService.createVitals(patientId, {
+        temperature: `${formData.temperature}°F`,
+        blood_pressure: formData.bloodPressure,
+        weight: `${formData.weight}kg`,
+        notes: formData.notes,
+      });
+
+      setAlertConfig({
+        title: 'Success',
+        message: 'Vitals recorded successfully',
+        buttons: [{ text: 'OK', onPress: () => navigation.goBack() }]
+      });
+      alertBottomSheetRef.current?.present();
+    } catch (error) {
+      console.error('Error recording vitals:', error);
+      setAlertConfig({
+        title: 'Error',
+        message: 'Failed to record vitals. Please try again.'
+      });
+      alertBottomSheetRef.current?.present();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <FontAwesome5 name="heartbeat" size={32} color={theme.colors.primary} />
+        <HeartRateIcon width={32} height={32} fill={theme.colors.primary} />
         <Text style={styles.title}>Add Vitals</Text>
         <Text style={styles.subtitle}>Record patient vital signs</Text>
       </View>
@@ -108,8 +129,10 @@ const AddVitalsScreen: React.FC<Props> = () => {
               mode="contained"
               onPress={handleSave}
               style={[styles.button, styles.saveButton]}
+              loading={isLoading}
+              disabled={isLoading}
             >
-              Save Vitals
+              {isLoading ? 'Saving...' : 'Save Vitals'}
             </Button>
           </View>
         </Card.Content>

@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Text, Button, TextInput, Card } from 'react-native-paper';
 import { theme } from '../../utils/theme';
+import ImageSlider from '../../components/ImageSlider';
 
 interface CreateDiagnosisBottomSheetProps {
   triageId: string;
   patientId: string | null;
-  triageImageUri: string;
+  triageImageUris: string[];
   onDismiss: () => void;
 }
 
 const CreateDiagnosisBottomSheet: React.FC<CreateDiagnosisBottomSheetProps> = ({
   triageId,
   patientId,
-  triageImageUri,
+  triageImageUris,
   onDismiss,
 }) => {
   const [diagnosis, setDiagnosis] = useState('');
@@ -26,7 +27,7 @@ const CreateDiagnosisBottomSheet: React.FC<CreateDiagnosisBottomSheetProps> = ({
       patientId,
       diagnosis,
       prescription,
-      triageImageUri,
+      triageImageUris,
     });
 
     // This is the trigger for the data flywheel - linking diagnosis to triage image
@@ -41,8 +42,12 @@ const CreateDiagnosisBottomSheet: React.FC<CreateDiagnosisBottomSheetProps> = ({
     <View style={styles.container}>
       <Card style={styles.imageCard}>
         <Card.Content>
-          <Text style={styles.imageTitle}>Triage Image</Text>
-          <Image source={{ uri: triageImageUri }} style={styles.triageImage} />
+          <Text style={styles.imageTitle}>Triage Images</Text>
+          <ImageSlider
+            images={triageImageUris}
+            imageStyle={styles.triageImage}
+            containerStyle={styles.imagesContainer}
+          />
         </Card.Content>
       </Card>
 
@@ -111,9 +116,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   triageImage: {
-    width: '100%',
-    height: 200,
+    width: 200,
+    height: 150,
     borderRadius: 8,
+    marginRight: 12,
+  },
+  imagesContainer: {
+    marginBottom: 12,
   },
   formCard: {
     backgroundColor: theme.colors.cardBackground,

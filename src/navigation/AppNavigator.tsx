@@ -31,7 +31,7 @@ export type RootStackParamList = {
   DoctorMain: undefined;
   Camera: { patientId: string };
   Result: { imageUri: string; additionalImages?: string[]; patientId: string };
-  PatientConsent: undefined;
+  PatientConsent: { patientId?: string };
   CHWSettings: undefined;
   DoctorSettings: undefined;
   PatientProfileCHW: { patientId: string };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, TextInput, Card, RadioButton } from 'react-native-paper';
 import { theme } from '../../utils/theme';
+import { apiService } from '../../services/api';
 
 interface RegisterPatientBottomSheetProps {
   onDismiss: () => void;
@@ -15,20 +16,40 @@ const RegisterPatientBottomSheet: React.FC<RegisterPatientBottomSheetProps> = ({
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState('');
   const [contactInfo, setContactInfo] = useState('');
+  const [emergencyContact, setEmergencyContact] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSave = () => {
-    // TODO: Save patient to database
-    console.log('Registering patient:', {
-      firstName,
-      lastName,
-      dob,
-      gender,
-      contactInfo,
-    });
-    onDismiss();
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      // Prepare patient data for API - demographics should be a JSON string
+      const demographics = {
+        name: `${firstName} ${lastName}`,
+        age: dob ? new Date().getFullYear() - new Date(dob).getFullYear() : null,
+        gender: gender,
+        phone: contactInfo,
+        address: '', // Could be added to form later
+        emergency_contact: emergencyContact,
+      };
+
+      const patientData = {
+        demographics: JSON.stringify(demographics)
+      };
+
+      // Call API to create patient
+      await apiService.createPatient(patientData);
+
+      // Close the bottom sheet on success
+      onDismiss();
+    } catch (error) {
+      console.error('Error creating patient:', error);
+      // TODO: Show error message to user
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const isFormValid = firstName && lastName && dob && gender && contactInfo;
+  const isFormValid = firstName && lastName && dob && gender && contactInfo && emergencyContact;
 
   return (
     <View style={styles.container}>
@@ -88,11 +109,21 @@ const RegisterPatientBottomSheet: React.FC<RegisterPatientBottomSheetProps> = ({
             placeholder="Phone number or email"
           />
 
+          <TextInput
+            label="Emergency Contact"
+            value={emergencyContact}
+            onChangeText={setEmergencyContact}
+            style={styles.input}
+            mode="outlined"
+            placeholder="Name and phone number"
+          />
+
           <View style={styles.buttonContainer}>
             <Button
               mode="outlined"
               onPress={onDismiss}
               style={styles.cancelButton}
+              disabled={isLoading}
             >
               Cancel
             </Button>
@@ -100,9 +131,10 @@ const RegisterPatientBottomSheet: React.FC<RegisterPatientBottomSheetProps> = ({
               mode="contained"
               onPress={handleSave}
               style={styles.saveButton}
-              disabled={!isFormValid}
+              disabled={!isFormValid || isLoading}
+              loading={isLoading}
             >
-              Register Patient
+              {isLoading ? 'Registering...' : 'Register Patient'}
             </Button>
           </View>
         </Card.Content>

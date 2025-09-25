@@ -1,13 +1,26 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, Card, Avatar } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import { PersonIcon, TriageIcon, WeekIcon, SettingsIcon, HelpIcon, LogoutIcon } from '../../assets/icons';
+
+const SettingsButtonIcon = ({ color, size }: { color: string; size: number }) => (
+  <SettingsIcon width={size} height={size} fill={color} />
+);
+
+const HelpButtonIcon = ({ color, size }: { color: string; size: number }) => (
+  <HelpIcon width={size} height={size} fill={color} />
+);
+
+const LogoutButtonIcon = ({ color, size }: { color: string; size: number }) => (
+  <LogoutIcon width={size} height={size} fill={color} />
+);
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { logout } from '../../store/slices/authSlice';
 import { RootState } from '../../store';
 import { theme } from '../../utils/theme';
 import AlertBottomSheet, { AlertBottomSheetRef } from '../../components/AlertBottomSheet';
+import { apiService } from '../../services/api';
 
 const CHWProfileScreen: React.FC = () => {
   const dispatch = useDispatch();
@@ -15,6 +28,25 @@ const CHWProfileScreen: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const alertBottomSheetRef = useRef<AlertBottomSheetRef>(null);
   const [alertConfig, setAlertConfig] = React.useState<{title: string, message: string, buttons?: any[]} | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const profileData = await apiService.getCurrentUser();
+        setUserProfile(profileData);
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
 
   const handleLogout = () => {
     setAlertConfig({
@@ -46,6 +78,14 @@ const CHWProfileScreen: React.FC = () => {
     );
   }
 
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -62,21 +102,24 @@ const CHWProfileScreen: React.FC = () => {
           />
           <Text style={styles.username}>{user.username}</Text>
           <Text style={styles.role}>Community Health Worker</Text>
+          {userProfile && (
+            <Text style={styles.email}>{userProfile.email}</Text>
+          )}
 
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
-              <FontAwesome5 name="users" size={24} color={theme.colors.primary} />
-              <Text style={styles.statNumber}>24</Text>
+              <PersonIcon width={24} height={24} fill={theme.colors.primary} />
+              <Text style={styles.statNumber}>{userProfile?.stats?.patients || 0}</Text>
               <Text style={styles.statLabel}>Patients</Text>
             </View>
             <View style={styles.statItem}>
-              <FontAwesome5 name="clipboard-list" size={24} color={theme.colors.primary} />
-              <Text style={styles.statNumber}>18</Text>
+              <TriageIcon width={24} height={24} fill={theme.colors.primary} />
+              <Text style={styles.statNumber}>{userProfile?.stats?.cases || 0}</Text>
               <Text style={styles.statLabel}>Triages</Text>
             </View>
             <View style={styles.statItem}>
-              <FontAwesome5 name="calendar-check" size={24} color={theme.colors.primary} />
-              <Text style={styles.statNumber}>12</Text>
+              <WeekIcon width={24} height={24} fill={theme.colors.primary} />
+              <Text style={styles.statNumber}>{userProfile?.stats?.this_week || 0}</Text>
               <Text style={styles.statLabel}>This Week</Text>
             </View>
           </View>
@@ -89,7 +132,7 @@ const CHWProfileScreen: React.FC = () => {
             mode="outlined"
             onPress={() => navigation.navigate('CHWSettings' as never)}
             style={styles.actionButton}
-            icon="cog"
+            icon={SettingsButtonIcon}
           >
             Settings
           </Button>
@@ -97,7 +140,7 @@ const CHWProfileScreen: React.FC = () => {
             mode="outlined"
             onPress={() => {/* TODO: Navigate to help */}}
             style={styles.actionButton}
-            icon="help-circle"
+            icon={HelpButtonIcon}
           >
             Help & Support
           </Button>
@@ -109,7 +152,7 @@ const CHWProfileScreen: React.FC = () => {
           mode="contained"
           onPress={handleLogout}
           style={styles.logoutButton}
-          icon="logout"
+          icon={LogoutButtonIcon}
           buttonColor={theme.colors.error}
         >
           Log Out
@@ -207,6 +250,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.error,
     marginTop: 20,
+  },
+  loadingText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    marginTop: 20,
+  },
+  email: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 24,
   },
 });
 

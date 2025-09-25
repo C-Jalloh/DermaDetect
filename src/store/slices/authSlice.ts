@@ -5,6 +5,13 @@ interface User {
   username: string;
   role: 'CHW' | 'Doctor';
   token: string;
+  stats?: {
+    patients?: number;
+    cases?: number;
+    this_week?: number;
+    diagnoses?: number;
+    pending_cases?: number;
+  };
 }
 
 interface AuthState {

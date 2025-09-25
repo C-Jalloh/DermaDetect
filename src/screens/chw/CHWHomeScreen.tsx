@@ -1,14 +1,19 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
 import { Text, Card, Button, Searchbar } from 'react-native-paper';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { theme } from '../../utils/theme';
 import BaseBottomSheet from '../../components/BaseBottomSheet';
 import PatientProfileBottomSheet from '../bottomSheets/PatientProfileBottomSheet';
+import { PersonIcon, SearchIcon } from '../../assets/icons';
+import { apiService } from '../../services/api';
 
-// Mock patients data
+const SearchBarIcon = ({ color, size }: { color: string; size: number }) => (
+  <SearchIcon width={size} height={size} fill={color} />
+);
+
+// Mock patients data - will be replaced with API data
 const mockPatients = [
   {
     id: '1',
@@ -31,52 +36,124 @@ const mockPatients = [
 ];
 
 const CHWHomeScreen: React.FC = () => {
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [patients, setPatients] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const patientProfileSheetRef = useRef<BottomSheetModal>(null);
-  const [selectedPatientId, setSelectedPatientId] = React.useState<string | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const navigation = useNavigation();
 
-  const filteredPatients = mockPatients.filter(patient =>
-    `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        const patientData = await apiService.getPatients();
+        // Sort patients by last_modified_at in descending order (newest first)
+        const sortedPatients = patientData.sort((a: any, b: any) => {
+          const dateA = new Date(a.last_modified_at);
+          const dateB = new Date(b.last_modified_at);
+          return dateB.getTime() - dateA.getTime(); // Descending order
+        });
+        setPatients(sortedPatients);
+      } catch (error) {
+        console.error('Error fetching patients:', error);
+        // Fallback to mock data if API fails
+        setPatients(mockPatients);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, []);
+
+  // Refresh data when screen comes into focus (e.g., after registering a patient)
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchPatients = async () => {
+        try {
+          const patientData = await apiService.getPatients();
+          // Sort patients by last_modified_at in descending order (newest first)
+          const sortedPatients = patientData.sort((a: any, b: any) => {
+            const dateA = new Date(a.last_modified_at);
+            const dateB = new Date(b.last_modified_at);
+            return dateB.getTime() - dateA.getTime(); // Descending order
+          });
+          setPatients(sortedPatients);
+        } catch (error) {
+          console.error('Error fetching patients:', error);
+          // Fallback to mock data if API fails
+          setPatients(mockPatients);
+        }
+      };
+
+      fetchPatients();
+    }, [])
   );
+
+  const filteredPatients = patients.filter(patient => {
+    const demographics = typeof patient.demographics === 'string' 
+      ? JSON.parse(patient.demographics) 
+      : patient.demographics || {};
+    const fullName = demographics.name || '';
+    return fullName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const handlePatientPress = (patientId: string) => {
     setSelectedPatientId(patientId);
     patientProfileSheetRef.current?.present();
   };
 
-  const renderPatientItem = ({ item }: { item: typeof mockPatients[0] }) => (
-    <Card style={styles.patientCard}>
-      <Card.Content>
-        <View style={styles.patientHeader}>
-          <FontAwesome5 name="user" size={24} color={theme.colors.primary} solid />
-          <View style={styles.patientInfo}>
-            <Text style={styles.patientName}>{item.firstName} {item.lastName}</Text>
-            <Text style={styles.patientDetails}>
-              {item.gender} • {new Date().getFullYear() - new Date(item.dob).getFullYear()} years old
-            </Text>
-            <Text style={styles.lastVisit}>Last visit: {item.lastVisit}</Text>
+  const renderPatientItem = ({ item }: { item: any }) => {
+    // Parse demographics data
+    let demographics: any = {};
+    try {
+      demographics = typeof item.demographics === 'string' 
+        ? JSON.parse(item.demographics) 
+        : item.demographics || {};
+    } catch (error) {
+      console.error('Error parsing demographics:', error, item.demographics);
+    }
+
+    const fullName = demographics.name || 'Unknown Patient';
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || 'Unknown';
+    const lastName = nameParts.slice(1).join(' ') || 'Patient';
+    const age = demographics.age || 'Unknown';
+    const gender = demographics.gender || 'Unknown';
+
+    return (
+      <Card style={styles.patientCard}>
+        <Card.Content>
+          <View style={styles.patientHeader}>
+            <PersonIcon width={24} height={24} fill={theme.colors.primary} />
+            <View style={styles.patientInfo}>
+              <Text style={styles.patientName}>{firstName} {lastName}</Text>
+              <Text style={styles.patientDetails}>
+                {gender} • {age} years old
+              </Text>
+              <Text style={styles.lastVisit}>Last visit: Not recorded</Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.patientActions}>
-          <Button
-            mode="outlined"
-            onPress={() => handlePatientPress(item.id)}
-            style={styles.actionButton}
-          >
-            View Profile
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => handlePatientPress(item.id)}
-            style={styles.actionButton}
-          >
-            Start Triage
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
-  );
+          <View style={styles.patientActions}>
+            <Button
+              mode="outlined"
+              onPress={() => handlePatientPress(item.id)}
+              style={styles.actionButton}
+            >
+              View Profile
+            </Button>
+            <Button
+              mode="contained"
+              onPress={() => handlePatientPress(item.id)}
+              style={styles.actionButton}
+            >
+              Start Triage
+            </Button>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -90,6 +167,7 @@ const CHWHomeScreen: React.FC = () => {
         onChangeText={setSearchQuery}
         value={searchQuery}
         style={styles.searchBar}
+        icon={SearchBarIcon}
       />
 
       <FlatList
@@ -98,6 +176,18 @@ const CHWHomeScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         style={styles.patientList}
         showsVerticalScrollIndicator={false}
+        extraData={patients}
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading patients...</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No patients found</Text>
+            </View>
+          )
+        }
       />
 
       <BaseBottomSheet
@@ -178,6 +268,26 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
   },
 });
 

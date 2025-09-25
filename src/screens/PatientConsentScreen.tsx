@@ -2,20 +2,31 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Button, Card, Checkbox, Title } from 'react-native-paper';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { theme } from '../utils/theme';
 
 type PatientConsentScreenNavigationProp = StackNavigationProp<RootStackParamList, 'PatientConsent'>;
+type PatientConsentScreenRouteProp = RouteProp<RootStackParamList, 'PatientConsent'>;
 
-const PatientConsentScreen: React.FC = () => {
+interface Props {
+  route: PatientConsentScreenRouteProp;
+}
+
+const PatientConsentScreen: React.FC<Props> = ({ route }) => {
+  const patientId = route?.params?.patientId;
   const [consentGiven, setConsentGiven] = useState(false);
   const navigation = useNavigation<PatientConsentScreenNavigationProp>();
 
   const handleContinue = () => {
     if (consentGiven) {
-      navigation.navigate('CHWMain');
+      if (patientId) {
+        navigation.navigate('Camera', { patientId });
+      } else {
+        // No patient selected, navigate to patient selection or registration
+        navigation.navigate('CHWMain');
+      }
     }
   };
 

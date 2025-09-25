@@ -2,9 +2,9 @@ import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Button } from 'react-native-paper';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { theme } from '../utils/theme';
 import BaseBottomSheet from './BaseBottomSheet';
+import { ThumbsDownIcon } from '../assets/icons';
 
 export interface TriageResultBottomSheetProps {
   onProceed: () => void;
@@ -37,10 +37,10 @@ const TriageResultBottomSheet = forwardRef<TriageResultBottomSheetRef, TriageRes
         <View style={styles.container}>
           {/* Red Alert Block */}
           <View style={styles.alertBlock}>
-            <FontAwesome5
-              name="exclamation-triangle"
-              size={48}
-              color="white"
+            <ThumbsDownIcon
+              width={48}
+              height={48}
+              fill="white"
               style={styles.alertIcon}
             />
             <Text style={styles.alertTitle}>HIGH RISK</Text>

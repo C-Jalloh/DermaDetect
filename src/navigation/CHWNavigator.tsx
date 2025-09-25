@@ -1,6 +1,19 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import { HomeIcon, UserIcon, RegisterIcon } from '../assets/icons';
+
+// Icon wrapper components to avoid defining during render
+const HomeTabIcon = ({ color, size }: { color: string; size: number }) => (
+  <HomeIcon width={size} height={size} fill={color} />
+);
+
+const RegisterTabIcon = ({ color, size }: { color: string; size: number }) => (
+  <RegisterIcon width={size} height={size} fill={color} />
+);
+
+const UserTabIcon = ({ color, size }: { color: string; size: number }) => (
+  <UserIcon width={size} height={size} fill={color} />
+);
 
 // CHW Screens
 import CHWHomeScreen from '../screens/chw/CHWHomeScreen';
@@ -20,19 +33,14 @@ const CHWNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused: _, color, size }) => {
-          let iconName: string;
-
           if (route.name === 'CHWHome') {
-            iconName = 'home';
+            return HomeTabIcon({ color, size });
           } else if (route.name === 'CHWRegisterPatient') {
-            iconName = 'user-plus';
+            return RegisterTabIcon({ color, size });
           } else if (route.name === 'CHWProfile') {
-            iconName = 'user-circle';
-          } else {
-            iconName = 'question';
+            return UserTabIcon({ color, size });
           }
-
-          return <FontAwesome5 name={iconName} size={size} color={color} />;
+          return UserTabIcon({ color, size }); // fallback
         },
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: 'gray',

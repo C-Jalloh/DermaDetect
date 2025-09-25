@@ -2,8 +2,8 @@ import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Button, TextInput, Chip } from 'react-native-paper';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { theme } from '../utils/theme';
+import { AddPictureIcon } from '../assets/icons';
 import BaseBottomSheet from './BaseBottomSheet';
 import DetailsBottomSheet, { DetailsBottomSheetRef, DetailItem } from './DetailsBottomSheet';
 import PhotoOptionsBottomSheet, { PhotoOptionsBottomSheetRef } from './PhotoOptionsBottomSheet';
@@ -206,7 +206,7 @@ const DataEnrichmentBottomSheet = forwardRef<DataEnrichmentBottomSheetRef, DataE
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Additional Photos</Text>
             <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto}>
-              <FontAwesome5 name="plus" size={24} color={theme.colors.primary} />
+              <AddPictureIcon size={24} color={theme.colors.primary} />
               <Text style={styles.addPhotoText}>Add Another Photo</Text>
             </TouchableOpacity>
 
