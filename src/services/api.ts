@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://10.10.14.27:5000/api'; // Host machine IP for Android emulator
+const API_BASE_URL = 'http://192.168.100.68:5000/api'; // Host machine IP for Android emulator
 
 class ApiService {
   private token: string | null = null;

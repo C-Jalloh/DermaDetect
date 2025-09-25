@@ -24,23 +24,39 @@ const PatientProfileBottomSheet: React.FC<PatientProfileBottomSheetProps> = ({
   const addVitalsSheetRef = useRef<BottomSheetModal>(null);
 
   useEffect(() => {
-    const fetchPatientData = async () => {
+    const checkAuthAndFetchData = async () => {
       if (!patientId) {
         setLoading(false);
         return;
       }
 
       try {
+        // Check if user is authenticated
+        const token = await apiService.getToken();
+        if (!token) {
+          console.error('No authentication token available for patient profile');
+          setPatientData(null);
+          setLoading(false);
+          return;
+        }
+
+        console.log('Fetching patient data for bottom sheet, ID:', patientId);
         const data = await apiService.getPatient(patientId);
+        console.log('Patient data received for bottom sheet:', data);
         setPatientData(data);
       } catch (error) {
-        console.error('Error fetching patient data:', error);
+        console.error('Error fetching patient data for bottom sheet:', error);
+        // Check if it's an authentication error
+        if (error instanceof Error && error.message && error.message.includes('401')) {
+          console.error('Authentication failed for patient profile bottom sheet');
+        }
+        setPatientData(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPatientData();
+    checkAuthAndFetchData();
   }, [patientId]);
 
   const handleAddVitals = () => {
@@ -68,7 +84,8 @@ const PatientProfileBottomSheet: React.FC<PatientProfileBottomSheetProps> = ({
     return (
       <BaseBottomSheet>
         <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>Patient not found</Text>
+          <Text style={styles.errorText}>Unable to load patient data</Text>
+          <Text style={styles.errorSubtext}>Please ensure you are logged in</Text>
         </View>
       </BaseBottomSheet>
     );
@@ -192,6 +209,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     color: theme.colors.error,
+  },
+  errorSubtext: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginTop: 8,
   },
   header: {
     alignItems: 'center',

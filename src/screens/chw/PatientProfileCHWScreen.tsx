@@ -24,28 +24,51 @@ const PatientProfileCHWScreen: React.FC<Props> = ({ route }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPatientData = async () => {
+    const checkAuthAndFetchData = async () => {
       try {
+        // Check if user is authenticated
+        const token = await apiService.getToken();
+        if (!token) {
+          console.error('No authentication token available');
+          setPatient(null);
+          setLoading(false);
+          return;
+        }
+
+        console.log('Fetching patient data for ID:', patientId);
         const [patientData, vitalsData] = await Promise.all([
           apiService.getPatient(patientId),
           apiService.getPatientVitals(patientId)
         ]);
+        console.log('Patient data received:', patientData);
+        console.log('Vitals data received:', vitalsData);
         setPatient(patientData);
         setVitals(vitalsData);
       } catch (error) {
         console.error('Failed to fetch patient data:', error);
+        // Check if it's an authentication error
+        if (error instanceof Error && error.message && error.message.includes('401')) {
+          console.error('Authentication failed - user may not be logged in');
+        }
+        setPatient(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPatientData();
+    if (patientId) {
+      checkAuthAndFetchData();
+    } else {
+      setLoading(false);
+    }
   }, [patientId]);
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text>Loading patient...</Text>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading patient data...</Text>
+        </View>
       </View>
     );
   }
@@ -53,15 +76,26 @@ const PatientProfileCHWScreen: React.FC<Props> = ({ route }) => {
   if (!patient) {
     return (
       <View style={styles.container}>
-        <Text>Patient not found</Text>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Unable to load patient data</Text>
+          <Text style={styles.errorSubtext}>Please ensure you are logged in and try again</Text>
+          <Text style={styles.errorSubtext}>Patient ID: {patientId}</Text>
+        </View>
       </View>
     );
   }
 
-  // Parse demographics if it's a string
-  const demographics = typeof patient.demographics === 'string' 
-    ? JSON.parse(patient.demographics) 
-    : patient.demographics;
+  // Parse demographics safely
+  let demographics: any = {};
+  try {
+    demographics = typeof patient.demographics === 'string' 
+      ? JSON.parse(patient.demographics) 
+      : patient.demographics || {};
+    console.log('Parsed demographics:', demographics);
+  } catch (error) {
+    console.error('Failed to parse demographics:', error);
+    demographics = {};
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -77,8 +111,9 @@ const PatientProfileCHWScreen: React.FC<Props> = ({ route }) => {
         <Card.Content>
           <Text style={styles.sectionTitle}>Patient Information</Text>
           <Text style={styles.infoText}>Name: {demographics.name || 'Not provided'}</Text>
-          <Text style={styles.infoText}>Last Modified: {new Date(patient.last_modified_at).toLocaleDateString()}</Text>
-          <Text style={styles.infoText}>Status: {patient.sync_status}</Text>
+          <Text style={styles.infoText}>ID: {patient.id || 'Not available'}</Text>
+          <Text style={styles.infoText}>Last Modified: {patient.last_modified_at ? new Date(patient.last_modified_at).toLocaleDateString() : 'Not available'}</Text>
+          <Text style={styles.infoText}>Status: {patient.sync_status || 'Unknown'}</Text>
         </Card.Content>
       </Card>
 
@@ -138,6 +173,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
   header: {
     alignItems: 'center',
     padding: 24,
@@ -171,6 +232,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.textSecondary,
     marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    fontFamily: 'monospace',
+    backgroundColor: theme.colors.cardBackground,
+    padding: 8,
+    marginTop: 8,
+    borderRadius: 4,
   },
   actionButtons: {
     flexDirection: 'row',
